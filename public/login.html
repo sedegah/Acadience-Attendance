@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lecturer Login - Acadience</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">Acadience</a>
+      <nav class="nav-links">
+        <a href="/student.html">Student Portal</a>
+      </nav>
+    </header>
+
+    <main class="auth-page">
+      <div class="auth-container">
+        <div class="auth-card">
+          <h1>Lecturer Sign In</h1>
+          <p class="auth-subtitle">Access your attendance dashboard</p>
+
+          <div id="auth-tabs" class="tabs">
+            <button class="tab active" data-tab="login">Login</button>
+            <button class="tab" data-tab="register">Register</button>
+          </div>
+
+          <form id="login-form" class="auth-form">
+            <div class="field">
+              <label for="login-email">Email Address</label>
+              <input id="login-email" type="email" placeholder="lecturer@university.edu" required />
+            </div>
+            <div class="field">
+              <label for="login-password">Password</label>
+              <input id="login-password" type="password" placeholder="••••••••" required />
+            </div>
+            <button class="cta primary full-width" type="submit">Sign In</button>
+            <div id="login-status" class="status hidden"></div>
+          </form>
+
+          <form id="register-form" class="auth-form hidden">
+            <div class="field">
+              <label for="register-name">Full Name</label>
+              <input id="register-name" type="text" placeholder="Dr. Jane Doe" required />
+            </div>
+            <div class="field">
+              <label for="register-email">Email Address</label>
+              <input id="register-email" type="email" placeholder="lecturer@university.edu" required />
+            </div>
+            <div class="field">
+              <label for="register-password">Password</label>
+              <input id="register-password" type="password" placeholder="••••••••" minlength="8" required />
+            </div>
+            <div class="field">
+              <label for="register-password-confirm">Confirm Password</label>
+              <input id="register-password-confirm" type="password" placeholder="••••••••" required />
+            </div>
+            <button class="cta primary full-width" type="submit">Create Account</button>
+            <div id="register-status" class="status hidden"></div>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <script src="/config.js"></script>
+    <script src="/app.js"></script>
+    <script src="/auth.js"></script>
+  </body>
+</html>

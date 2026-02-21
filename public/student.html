@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Check-in</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="bg-orbit"></div>
+    <header class="site-header">
+      <a class="brand" href="/">Acadience</a>
+      <nav class="nav-links">
+        <a href="/login.html">Lecturer Login</a>
+      </nav>
+    </header>
+
+    <main class="page">
+      <section class="panel">
+        <h2>Scan and mark attendance</h2>
+        <p class="muted">Allow location access to verify you are inside the class geofence.</p>
+
+        <form id="student-form" class="stack">
+          <div class="field">
+            <label for="qr-token">QR token</label>
+            <input id="qr-token" type="text" placeholder="Paste QR token" required />
+          </div>
+          <div class="field">
+            <label for="student-id">Student ID</label>
+            <input id="student-id" type="text" placeholder="UE2023001" required />
+          </div>
+          <div class="field">
+            <label for="student-name">Full Name</label>
+            <input id="student-name" type="text" placeholder="Ama Mensah" required />
+          </div>
+          <div class="field">
+            <label for="course-code">Course Code</label>
+            <input id="course-code" type="text" placeholder="CSC 401" required />
+          </div>
+          <button class="cta primary" type="submit">Submit attendance</button>
+        </form>
+
+        <div class="status" id="student-status"></div>
+      </section>
+    </main>
+
+    <script src="/config.js"></script>
+    <script src="/app.js"></script>
+    <script src="/student.js"></script>
+  </body>
+</html>

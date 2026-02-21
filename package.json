@@ -1,0 +1,11 @@
+{
+  "name": "acadience-attendance",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev:worker": "wrangler dev api/src/index.js",
+    "dev:pages": "wrangler pages dev public",
+    "deploy:worker": "wrangler deploy api/src/index.js",
+    "deploy:pages": "wrangler pages deploy public"
+  }
+}

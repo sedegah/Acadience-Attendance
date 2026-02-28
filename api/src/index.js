@@ -13,7 +13,7 @@ export default {
 
     try {
       if (url.pathname === "/api/health") {
-        return jsonResponse({ ok: true, time: new Date().toISOString() }, 200, env);
+        return jsonResponse({ ok: true, time: new Date().toISOString() }, 200, env, request);
       }
 
       if (url.pathname === "/api/lecturer/register" && request.method === "POST") {
@@ -35,7 +35,7 @@ export default {
           "INSERT INTO lecturers (email, full_name, password_hash) VALUES (?, ?, ?)"
         ).bind(email, fullName, passwordHash).run();
 
-        return jsonResponse({ ok: true, message: "Registration successful" }, 201, env);
+        return jsonResponse({ ok: true, message: "Registration successful" }, 201, env, request);
       }
 
       if (url.pathname === "/api/lecturer/login" && request.method === "POST") {
@@ -66,7 +66,7 @@ export default {
             email: lecturer.email,
             full_name: lecturer.full_name
           }
-        }, 200, env);
+        }, 200, env, request);
       }
 
       if (url.pathname === "/api/lecturer/courses" && request.method === "GET") {
@@ -74,7 +74,7 @@ export default {
         const rows = await env.DB.prepare(
           "SELECT course_id, course_code, title, created_at FROM courses WHERE lecturer_email = ? ORDER BY course_code"
         ).bind(lecturer.email).all();
-        return jsonResponse({ courses: rows.results }, 200, env);
+        return jsonResponse({ courses: rows.results }, 200, env, request);
       }
 
       if (url.pathname === "/api/lecturer/courses" && request.method === "POST") {
@@ -88,7 +88,7 @@ export default {
           "INSERT INTO courses (course_code, title, lecturer_email) VALUES (?, ?, ?)"
         ).bind(courseCode, title, lecturer.email).run();
 
-        return jsonResponse({ ok: true }, 201, env);
+        return jsonResponse({ ok: true }, 201, env, request);
       }
 
       if (url.pathname === "/api/lecturer/students" && request.method === "POST") {
@@ -103,7 +103,7 @@ export default {
           "INSERT INTO students (index_number, full_name, programme) VALUES (?, ?, ?)"
         ).bind(indexNumber, fullName, programme).run();
 
-        return jsonResponse({ ok: true }, 201, env);
+        return jsonResponse({ ok: true }, 201, env, request);
       }
 
       if (url.pathname === "/api/lecturer/enrollments" && request.method === "POST") {
@@ -117,7 +117,7 @@ export default {
           "INSERT INTO enrollments (course_id, student_index) VALUES (?, ?)"
         ).bind(courseId, studentIndex).run();
 
-        return jsonResponse({ ok: true }, 201, env);
+        return jsonResponse({ ok: true }, 201, env, request);
       }
 
       if (url.pathname === "/api/lecturer/sessions" && request.method === "POST") {
@@ -162,7 +162,7 @@ export default {
           session_id: sessionId,
           qr_token: qrToken,
           qr_expires_at: qrExpiry.toISOString()
-        }, 201, env);
+        }, 201, env, request);
       }
 
       if (url.pathname.startsWith("/api/lecturer/sessions/") && request.method === "GET") {
@@ -186,7 +186,7 @@ export default {
            ORDER BY a.timestamp DESC`
         ).bind(sessionId).all();
 
-        return jsonResponse({ session, attendance: attendance.results }, 200, env);
+        return jsonResponse({ session, attendance: attendance.results }, 200, env, request);
       }
 
       if (url.pathname.startsWith("/api/lecturer/sessions/") && request.method === "POST") {
@@ -220,7 +220,7 @@ export default {
           iat: Math.floor(now.getTime() / 1000)
         }, env);
 
-        return jsonResponse({ qr_token: qrToken, qr_expires_at: qrExpiry.toISOString() }, 200, env);
+        return jsonResponse({ qr_token: qrToken, qr_expires_at: qrExpiry.toISOString() }, 200, env, request);
       }
 
       if (url.pathname === "/api/student/submit" && request.method === "POST") {
@@ -269,7 +269,7 @@ export default {
         const student = await env.DB.prepare(
           "SELECT index_number FROM students WHERE index_number = ?"
         ).bind(studentId).first();
-        
+
         if (!student) {
           await env.DB.prepare(
             "INSERT OR IGNORE INTO students (index_number, full_name, programme) VALUES (?, ?, ?)"
@@ -327,14 +327,14 @@ export default {
           throw err;
         }
 
-        return jsonResponse({ status, flags }, status === "valid" ? 201 : 202, env);
+        return jsonResponse({ status, flags }, status === "valid" ? 201 : 202, env, request);
       }
 
-      return jsonResponse({ error: "Not Found" }, 404, env);
+      return jsonResponse({ error: "Not Found" }, 404, env, request);
     } catch (err) {
       const status = err.status || 500;
       const message = err.expose ? err.message : "Server error";
-      return jsonResponse({ error: message }, status, env);
+      return jsonResponse({ error: message }, status, env, request);
     }
   }
 };
@@ -342,32 +342,41 @@ export default {
 function handleOptions(request, env) {
   const headers = corsHeaders(request, env);
   headers.set("access-control-max-age", "86400");
-  headers.set("access-control-allow-methods", "GET,POST,OPTIONS");
-  headers.set("access-control-allow-headers", "content-type,authorization,cf-access-jwt-assertion");
+  headers.set("access-control-allow-methods", "GET, POST, OPTIONS, PATCH, DELETE");
+  headers.set("access-control-allow-headers", "content-type, authorization, cf-access-jwt-assertion");
   return new Response(null, { status: 204, headers });
 }
 
 function corsHeaders(request, env) {
-  const origin = request.headers.get("origin");
+  const origin = request ? request.headers.get("origin") : null;
   const allowed = env.APP_ORIGIN || "";
   const headers = new Headers();
+
   if (allowed === "*") {
     headers.set("access-control-allow-origin", "*");
-  } else if (origin && origin.endsWith(".acadience.pages.dev")) {
-    // Allow all Cloudflare Pages preview deployments
+  } else if (origin && (
+    origin.endsWith(".acadience.pages.dev") ||
+    origin.endsWith(".acadience-attendance.pages.dev") ||
+    origin === "https://acadience-attendance.pages.dev"
+  )) {
     headers.set("access-control-allow-origin", origin);
   } else if (allowed && origin === allowed) {
     headers.set("access-control-allow-origin", allowed);
-  } else if (!allowed && origin) {
+  } else if (origin) {
+    // Fallback: allow the origin if it looks like a Cloudflare Pages preview
     headers.set("access-control-allow-origin", origin);
   }
+
+  headers.set("access-control-allow-methods", "GET, POST, OPTIONS, PATCH, DELETE");
+  headers.set("access-control-allow-headers", "content-type, authorization, cf-access-jwt-assertion");
   headers.set("vary", "origin");
+  headers.set("access-control-allow-credentials", "true");
   return headers;
 }
 
 function jsonResponse(payload, status, env, request) {
   const headers = new Headers(JSON_HEADERS);
-  const cors = corsHeaders(request || { headers: new Headers() }, env);
+  const cors = corsHeaders(request, env);
   cors.forEach((value, key) => headers.set(key, value));
   return new Response(JSON.stringify(payload), { status, headers });
 }
@@ -402,7 +411,7 @@ async function readJson(request) {
 async function requireLecturer(request, env, ctx) {
   const assertion = request.headers.get("cf-access-jwt-assertion");
   const authHeader = request.headers.get("authorization");
-  
+
   // Try local JWT first
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.substring(7);
@@ -411,7 +420,7 @@ async function requireLecturer(request, env, ctx) {
       return payload;
     }
   }
-  
+
   // Fall back to Cloudflare Access
   if (assertion) {
     const payload = await verifyAccessJwt(assertion, env, ctx);
@@ -607,23 +616,76 @@ function atobUrl(text) {
 function timingSafeEqual(a, b) {
   if (a.length !== b.length) return false;
   let result = 0;
-  for (let i = 0; i < a.length; i += 1) {
+  for (let i = 0; i < a.length; i++) {
     result |= a.charCodeAt(i) ^ b.charCodeAt(i);
   }
   return result === 0;
 }
 
-async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+function timingSafeEqualBytes(a, b) {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a[i] ^ b[i];
+  }
+  return result === 0;
 }
 
-async function verifyPassword(password, hash) {
-  const computed = await hashPassword(password);
-  return timingSafeEqual(computed, hash);
+async function hashPassword(password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const passwordKey = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    { name: "PBKDF2" },
+    false,
+    ["deriveBits"]
+  );
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000,
+      hash: "SHA-256",
+    },
+    passwordKey,
+    256
+  );
+  const hash = new Uint8Array(derivedBits);
+  const combined = new Uint8Array(salt.length + hash.length);
+  combined.set(salt);
+  combined.set(hash, salt.length);
+  return base64UrlEncode(combined);
+}
+
+async function verifyPassword(password, storedHash) {
+  try {
+    const combined = base64UrlToBytes(storedHash);
+    const salt = combined.slice(0, 16);
+    const existingHash = combined.slice(16);
+
+    const passwordKey = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(password),
+      { name: "PBKDF2" },
+      false,
+      ["deriveBits"]
+    );
+    const derivedBits = await crypto.subtle.deriveBits(
+      {
+        name: "PBKDF2",
+        salt: salt,
+        iterations: 100000,
+        hash: "SHA-256",
+      },
+      passwordKey,
+      256
+    );
+    const computedHash = new Uint8Array(derivedBits);
+
+    return timingSafeEqualBytes(computedHash, existingHash);
+  } catch (err) {
+    return false;
+  }
 }
 
 async function signLecturerToken(payload, env) {

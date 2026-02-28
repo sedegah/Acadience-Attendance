@@ -1,14 +1,3 @@
-/*
-  Acadience Attendance — UI built as a faithful clone of coinbase.com
-  - Inter font, white bg, #0052FF blue accent
-  - Sticky frosted nav with mega-menus
-  - Hero: large left text + right dark-gradient phone mockup card
-  - Section alternation: white / #F2F2F2 gray
-  - Dark rounded asset table (black bg, tabs, price rows)
-  - Coinbase-One-style feature sections with phone mockup
-  - 3-col article grid, CTA with circle cluster, multi-col footer
-  - Dashboard: stats cards, sortable table, sidebar with blue card
-*/
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
@@ -27,9 +16,6 @@ import {
     CheckCircle2, XCircle, Scan
 } from "lucide-react";
 
-/* ────────────────────────────────────────────────────────────
-   STYLES  (verbatim from Coinbase source, content swapped)
-──────────────────────────────────────────────────────────── */
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 

@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
+import { QRCodeSVG } from "qrcode.react";
 
 const API_BASE = "https://acadience-attendance-api.sedegahkimathi.workers.dev";
 const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
@@ -371,13 +372,98 @@ table.cb-tbl tbody tr:hover{background:var(--gray-50)}
   .cb-sec-gray,.cb-footer{padding:48px 32px}
   .cb-stats{grid-template-columns:repeat(2,1fr)}
 }
+/* Hamburger button — hidden on desktop */
+.cb-hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;flex-direction:column;gap:5px;z-index:10}
+.cb-hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .2s}
+/* Mobile dropdown menu */
+.cb-mobile-menu{display:none;flex-direction:column;padding:12px 16px 16px;border-top:1px solid var(--gray-100);animation:slideDown .2s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.cb-mobile-link{display:block;width:100%;text-align:left;padding:12px 8px;font-size:15px;font-weight:500;color:var(--text);background:none;border:none;border-radius:10px;cursor:pointer;transition:background .12s}
+.cb-mobile-link:hover{background:var(--gray-50)}
+.cb-mobile-cta{color:var(--blue);font-weight:600}
+
 @media(max-width:768px){
-  .cb-hero,.cb-two-col,.cb-cta-section{grid-template-columns:1fr}
-  .cb-footer-grid{grid-template-columns:1fr 1fr}
-  .cb-articles{grid-template-columns:1fr}
-  .cb-stats{grid-template-columns:1fr}
-  .cb-nav{padding:0 16px}
-  .cb-nav-links{display:none}
+  /* ── Layout stacking ── */
+  .cb-hero,.cb-two-col,.cb-cta-section{grid-template-columns:1fr; padding: 24px 16px; gap: 20px;}
+  .cb-hero{min-height:auto !important;}
+  .cb-footer-grid{grid-template-columns:1fr 1fr; gap: 20px;}
+  .cb-articles{grid-template-columns:1fr; gap: 14px;}
+  .cb-stats{grid-template-columns:1fr 1fr; gap: 10px;}
+  .cb-sec-gray,.cb-footer{padding: 28px 16px;}
+
+  /* ── Navigation: hamburger ── */
+  .cb-desktop-only{display:none !important}
+  .cb-hamburger{display:flex}
+  .cb-mobile-menu{display:flex}
+  .cb-mega{display:none !important}
+  .cb-nav{padding:10px 16px; height:auto; flex-direction:column}
+  .cb-nav-inner{width:100%}
+
+  /* ── Hero declutter ── */
+  .cb-hero-title{font-size: 32px; letter-spacing: -1px; margin-bottom: 10px; line-height: 1.08;}
+  .cb-hero-sub{font-size: 14px; margin-bottom: 16px; max-width: 100%;}
+  .cb-phone-bg{display: none;} /* Hide the phone mockup entirely on mobile */
+  .cb-submit-card{padding: 20px 16px;}
+
+  /* ── Section headings ── */
+  .cb-h2, .cb-cta-h2{font-size: 24px; letter-spacing: -0.5px; line-height: 1.15;}
+  .cb-p{font-size: 14px; margin-bottom: 16px;}
+  .cb-badge-pill{font-size: 11px; padding: 4px 10px; margin-bottom: 12px;}
+
+  /* ── Hide heavy visual panels on mobile ── */
+  .cb-asset-table{border-radius: 20px; padding: 14px 14px 6px;}
+  .cb-asset-name{font-size: 18px;}
+  .cb-asset-price{font-size: 16px;}
+  .cb-asset-chg{font-size: 12px;}
+
+  /* ── QR & geofence panels: no forced square ── */
+  .cb-qr-dark{padding: 20px; border-radius: 20px;}
+  .cb-feat-wrap{aspect-ratio: auto; padding: 20px; border-radius: 20px;}
+  .cb-feat-phone{width: 80%;}
+
+  /* ── Forms ── */
+  .cb-hero-form, .cb-cta-form{flex-direction: column; width: 100%; gap: 10px;}
+  .cb-hero-form input, .cb-cta-form input{width: 100%; font-size: 14px; padding: 12px 16px;}
+  .cb-hero-form-btn, .cb-cta-btn{width: 100%; padding: 12px; font-size: 14px;}
+
+  /* ── Dashboard & Sub-components ── */
+  .cb-dash-page{flex-direction:column; padding:12px 8px; gap: 12px;}
+  .cb-dash-sidebar{width:100%; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--gray-100); padding-bottom: 16px;}
+  .cb-form-grid{grid-template-columns: 1fr; gap: 12px;}
+  .cb-tbl-wrap{overflow-x: auto; width: 100%; border-radius: 8px; -webkit-overflow-scrolling: touch;}
+  .cb-tbl-top{flex-direction: column; align-items: flex-start; gap: 10px;}
+  .cb-tbl th, .cb-tbl td{padding: 12px 10px; font-size: 13px;}
+  .cb-stat-card{padding: 16px;}
+  .cb-filter-pill{padding: 8px; font-size: 13px;}
+  .cb-modal{margin: 10px; width: calc(100% - 20px); max-height: 90vh; overflow-y: auto;}
+  .cb-dash-main{padding: 8px;}
+  
+  /* ── Dashboard Tabs ── */
+  .cb-dash-tabs{display: flex; overflow-x: auto; padding-bottom: 4px; border-bottom: none; -webkit-overflow-scrolling: touch; scrollbar-width: none;}
+  .cb-dash-tabs::-webkit-scrollbar { display: none; }
+  .cb-dash-tab{white-space: nowrap; padding: 10px 16px; border-radius: 20px; background: var(--gray-50); border: 1px solid var(--gray-100); color: var(--gray-600); border-bottom: none !important;}
+  .cb-dash-tab.active{background: var(--blue); color: white; border-color: var(--blue);}
+  
+  /* Make all top-level header buttons stack */
+  .cb-dash-main > div > div:first-child{flex-direction: column; align-items: flex-start !important; gap: 12px; margin-bottom: 20px !important;}
+  .cb-btn-signup, .cb-btn-dark, .cb-btn-signin{width: 100%; text-align: center; justify-content: center;}
+
+  /* ── Footer compact ── */
+  .cb-footer-bottom{flex-direction: column; align-items: flex-start; gap: 8px; padding-top: 16px; margin-top: 24px;}
+  .cb-footer-bottom-links{gap: 16px;}
+  .cb-footer-col h4{font-size: 13px; margin-bottom: 8px;}
+  .cb-footer-col a{font-size: 13px;}
+
+  /* ── CTA section padding ── */
+  .cb-circles{display: none;} /* Hide decorative circles on mobile */
+}
+@media(max-width:480px){
+  .cb-hero-title{font-size: 28px; letter-spacing: -0.8px;}
+  .cb-h2, .cb-cta-h2{font-size: 22px;}
+  .cb-stats{grid-template-columns:1fr;}
+  .cb-qr-canvas{width: 120px; height: 120px;}
+  .cb-footer-grid{grid-template-columns:1fr;}
+  .cb-asset-table{display:none;} /* Hide entirely on very small screens */
 }
 `;
 
@@ -533,9 +619,10 @@ function MegaMenu({ data, onClose }) {
 /* ────────── NAV (home) ────────── */
 function Nav({ setPage, toast }) {
     const [open, setOpen] = useState(null);
+    const [mobileOpen, setMobileOpen] = useState(false);
     const ref = useRef(null);
     useEffect(() => {
-        const h = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(null); };
+        const h = e => { if (ref.current && !ref.current.contains(e.target)) { setOpen(null); setMobileOpen(false); } };
         document.addEventListener("mousedown", h);
         return () => document.removeEventListener("mousedown", h);
     }, []);
@@ -544,9 +631,9 @@ function Nav({ setPage, toast }) {
             <div className="cb-nav-inner">
                 <div className="cb-logo" onClick={() => setPage("home")}>
                     <img src="/logo.png" style={{ height: 38, width: 38, objectFit: "contain" }} />
-                    <span className="cb-logo-text">Acadience</span>
                 </div>
-                <ul className="cb-nav-links">
+                {/* Desktop links - hidden on mobile via CSS */}
+                <ul className="cb-nav-links cb-desktop-only">
                     {Object.keys(NAV_MENUS).map(name => (
                         <li key={name} className="cb-nav-item">
                             <button className={`cb-nav-btn${open === name ? " open" : ""}`}
@@ -559,11 +646,26 @@ function Nav({ setPage, toast }) {
                     <li><button className="cb-nav-btn" onClick={() => toast.add("Pricing coming soon", "warn")}>Pricing</button></li>
                 </ul>
                 <div className="cb-nav-actions">
-                    <button className="cb-icon-btn"><Search size={18} /></button>
-                    <button className="cb-btn-signin" onClick={() => setPage("login")}>Sign in</button>
-                    <button className="cb-btn-signup" onClick={() => setPage("student")}>Student check-in</button>
+                    <button className="cb-btn-signin cb-desktop-only" onClick={() => setPage("login")}>Sign in</button>
+                    <button className="cb-btn-signup cb-desktop-only" onClick={() => setPage("student")}>Student check-in</button>
+                    {/* Hamburger - visible on mobile only */}
+                    <button className="cb-hamburger" onClick={() => setMobileOpen(p => !p)} aria-label="Menu">
+                        {mobileOpen ? <X size={22} /> : <><span /><span /><span /></>}
+                    </button>
                 </div>
             </div>
+            {/* Mobile dropdown */}
+            {mobileOpen && (
+                <div className="cb-mobile-menu">
+                    {Object.keys(NAV_MENUS).map(name => (
+                        <button key={name} className="cb-mobile-link" onClick={() => { setMobileOpen(false); toast.add(`${name} section`, "success"); }}>{name}</button>
+                    ))}
+                    <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); toast.add("Pricing coming soon", "warn"); }}>Pricing</button>
+                    <hr style={{ border: "none", borderTop: "1px solid var(--gray-100)", margin: "8px 0" }} />
+                    <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); setPage("login"); }}>Sign in</button>
+                    <button className="cb-mobile-link cb-mobile-cta" onClick={() => { setMobileOpen(false); setPage("student"); }}>Student check-in</button>
+                </div>
+            )}
         </nav>
     );
 }
@@ -575,7 +677,6 @@ function DashNav({ tab, setTab, setPage, onLogout }) {
             <div className="cb-nav-inner">
                 <div className="cb-logo" onClick={() => setPage("home")}>
                     <img src="/logo.png" style={{ height: 38, width: 38, objectFit: "contain" }} />
-                    <span className="cb-logo-text">Acadience</span>
                 </div>
                 <ul className="cb-nav-links">
                     {["Dashboard", "Sessions", "Courses", "Flagged", "Students"].map(t => (
@@ -605,19 +706,22 @@ function QRPanel({ session, onRefresh }) {
     }, []);
     const refresh = () => { setSeed(Math.floor(Math.random() * 9999) + 1); setSecs(30); onRefresh?.(); };
     const tc = secs <= 5 ? "danger" : secs <= 10 ? "warn" : "ok";
+    const qrVal = session?.qr_token ? `${window.location.origin}/student?token=${session.qr_token}` : `https://acadience.app/student?token=${seed}`;
     return (
         <div className="cb-qr-dark">
             <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)", letterSpacing: ".1em", textTransform: "uppercase", alignSelf: "flex-start" }}>Live Session QR</div>
-            <div className="cb-qr-canvas"><QRPattern seed={seed} /></div>
-            <div style={{ textAlign: "center" }}>
-                <div className="cb-qr-label">ROTATES IN</div>
-                <div className={`cb-qr-timer ${tc}`}>{fmt(0)}:{fmt(secs)}</div>
+            <div className="cb-qr-canvas" style={{ padding: 12, background: "white", borderRadius: 16 }}>
+                <QRCodeSVG value={qrVal} size={150} level="M" />
             </div>
-            <div className="cb-qr-bar">
-                <div className="cb-qr-bar-fill" style={{ width: `${(secs / 30) * 100}%`, background: secs <= 5 ? "#F87171" : secs <= 10 ? "#FBBF24" : "var(--blue)" }} />
+            <div style={{ textAlign: "center", marginTop: 4 }}>
+                <div className="cb-qr-label" style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,.5)" }}>ROTATES IN</div>
+                <div className={`cb-qr-timer ${tc}`} style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>00:{secs.toString().padStart(2, '0')}</div>
             </div>
-            <div className="cb-qr-course">{session?.courseName || "CS401"} · Session #{session?.id || 1}</div>
-            <button className="cb-qr-refresh" onClick={refresh}><RotateCcw size={13} /> &nbsp;Refresh QR</button>
+            <div className="cb-qr-bar" style={{ width: "100%", height: 4, background: "rgba(255,255,255,.1)", borderRadius: 4, marginTop: 12, overflow: "hidden" }}>
+                <div className="cb-qr-bar-fill" style={{ height: "100%", width: `${(secs / 30) * 100}%`, transition: "width 1s linear", background: secs <= 5 ? "#F87171" : secs <= 10 ? "#FBBF24" : "var(--blue)" }} />
+            </div>
+            <div className="cb-qr-course" style={{ fontSize: 13, fontWeight: 600, color: "#aaa" }}>{session?.courseName || "CS401"} · Session #{session?.id || 1}</div>
+            <button className="cb-qr-refresh" onClick={refresh} style={{ marginTop: 0, background: "rgba(255,255,255,.1)", border: "none", color: "white", padding: "8px 16px", borderRadius: 100, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><RotateCcw size={13} /> Refresh QR</button>
         </div>
     );
 }
@@ -776,7 +880,7 @@ function HomePage({ setPage, toast }) {
                             <input type="email" placeholder="institution@university.edu" value={email} onChange={e => setEmail(e.target.value)} />
                             <button className="cb-hero-form-btn" onClick={() => setPage("login")}>Get started</button>
                         </div>
-                        <p className="cb-hero-disclaimer">Free for up to 3 courses. No credit card required. Student data stays on your Cloudflare account.</p>
+
                     </div>
                     <div>
                         <div className="cb-phone-bg">
@@ -789,7 +893,7 @@ function HomePage({ setPage, toast }) {
 
             {/* ── EXPLORE / [] (gray section, dark table) ── */}
             <section className="cb-sec-gray">
-                <div style={{ maxWidth: 1440, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "center" }}>
+                <div className="cb-two-col">
                     <div>
                         <h2 className="cb-h2">Track every lecture,<br />course, and student.</h2>
                         <p className="cb-p">Real-time attendance rates, per-student records, flagged submission review, and one-click CSV exports — all in one dashboard.</p>
@@ -856,7 +960,7 @@ function HomePage({ setPage, toast }) {
             {/* ── LEARN / BLOG (gray) ── */}
             <section className="cb-sec-gray">
                 <div style={{ maxWidth: 1440, margin: "0 auto" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 40, alignItems: "end", marginBottom: 48 }}>
+                    <div className="cb-two-col" style={{ padding: 0, maxWidth: "100%", alignItems: "end", marginBottom: 48 }}>
                         <h2 style={{ fontSize: "clamp(32px,4vw,54px)", fontWeight: 800, letterSpacing: "-2px", lineHeight: 1.1 }}>
                             Better attendance.<br />Better outcomes.
                         </h2>
@@ -867,7 +971,7 @@ function HomePage({ setPage, toast }) {
                     </div>
                     <div className="cb-articles">
                         {ARTICLES.map((a, i) => (
-                            <div key={i} className="cb-article" onClick={() => toast.add("Article opening…", "success")}>
+                            <div key={i} className="cb-article" onClick={() => setPage("docs")}>
                                 <div className="cb-article-img" style={{ background: a.bg }}>{a.icon}</div>
                                 <div className="cb-article-body"><h3>{a.title}</h3><p>{a.excerpt}</p></div>
                             </div>
@@ -895,7 +999,7 @@ function HomePage({ setPage, toast }) {
                         </div>
                     </div>
                 </div>
-                <div style={{ textAlign: "center", fontSize: 13, color: "var(--gray-400)", padding: "20px 80px 40px", borderTop: "1px solid var(--gray-100)", maxWidth: 1440, margin: "0 auto" }}>
+                <div style={{ textAlign: "center", fontSize: 13, color: "var(--gray-400)", padding: "20px 16px 40px", borderTop: "1px solid var(--gray-100)", maxWidth: 1440, margin: "0 auto" }}>
                     Built on Cloudflare Workers + D1. Authentication via Cloudflare Access. Student data never leaves your account.
                 </div>
             </section>
@@ -1140,6 +1244,16 @@ function CoursesView({ toast, courses = [], onAdd }) {
                         <div style={{ display: "flex", gap: 8 }}>
                             <button className="cb-filter-pill" style={{ flex: 1, padding: "8px", fontSize: 13 }} onClick={() => toast.add("Viewing " + c.code, "success")}>View</button>
                             <button className="cb-filter-pill" style={{ flex: 1, padding: "8px", fontSize: 13 }} onClick={() => toast.add("Enrollments for " + c.code, "success")}>Enrollments</button>
+                            <button className="cb-filter-pill" style={{ padding: "8px", fontSize: 13, background: "#FEF2F2", color: "var(--red)", border: "1.5px solid rgba(207,48,74,.2)" }} onClick={async () => {
+                                if (window.confirm(`Delete course ${c.code || c.course_code}?`)) {
+                                    try {
+                                        await axios.delete(`${API_BASE}/api/lecturer/courses/${c.id}`, { headers: getAuthHeaders() });
+                                        toast.add("Course deleted", "success");
+                                    } catch (e) {
+                                        toast.add(e?.response?.data?.error || "Failed to delete course", "error");
+                                    }
+                                }
+                            }}><LogOut size={16} /></button>
                         </div>
                     </div>
                 ))}
@@ -1158,7 +1272,15 @@ function NewSessionModal({ onClose, onSave, toast, courses = [] }) {
         if (!c) { toast.add("Course not found", "error"); return; }
         setSubmitting(true);
         try {
-            await axios.post(`${API_BASE}/api/lecturer/sessions`, { courseId: c.id, latitude: 0, longitude: 0, radius: parseInt(form.radius) || 100 }, { headers: getAuthHeaders() });
+            let lat = 0, lon = 0;
+            try {
+                const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 10000 }));
+                lat = pos.coords.latitude;
+                lon = pos.coords.longitude;
+            } catch (err) {
+                toast.add("Could not get GPS location. Geofencing will be disabled.", "warn");
+            }
+            await axios.post(`${API_BASE}/api/lecturer/sessions`, { courseId: c.id, latitude: lat, longitude: lon, radius: parseInt(form.radius) || 100, session_minutes: parseInt(form.duration) || 90 }, { headers: getAuthHeaders() });
             toast.add("Session started", "success");
             onSave();
         } catch (e) { toast.add(e?.response?.data?.error || "Failed to create session", "error"); }
@@ -1353,9 +1475,9 @@ function Dashboard({ toast }) {
                 axios.get(`${API_BASE}/api/lecturer/sessions`, h).catch(() => ({ data: [] })),
                 axios.get(`${API_BASE}/api/lecturer/flags`, h).catch(() => ({ data: [] })),
             ]);
-            setCourses(Array.isArray(c.data) ? c.data : []);
-            setSessions(Array.isArray(s.data) ? s.data : []);
-            setFlags(Array.isArray(f.data) ? f.data : []);
+            setCourses(c.data?.courses || (Array.isArray(c.data) ? c.data : []));
+            setSessions(s.data?.sessions || s.data?.session ? [s.data.session] : (Array.isArray(s.data) ? s.data : []));
+            setFlags(f.data?.flags || (Array.isArray(f.data) ? f.data : []));
             // Fetch students from the active session if any
             const active = (Array.isArray(s.data) ? s.data : []).find(x => x.status === "active");
             if (active) {
@@ -1436,77 +1558,126 @@ function Dashboard({ toast }) {
 
 /* ────────── STUDENT SUBMIT ────────── */
 function StudentPage({ setPage }) {
-    const [step, setStep] = useState("form");
-    const [form, setForm] = useState({ sid: "", name: "", course: "", error: "" });
+    const [step, setStep] = useState("loading");
+    const [sessionData, setSessionData] = useState(null);
+    const [form, setForm] = useState({ sid: "", name: "", error: "" });
     const [loading, setLoading] = useState(false);
+    const [geo, setGeo] = useState({ lat: null, lon: null, acc: null, status: "acquiring" });
+
+    useEffect(() => {
+        const token = new URLSearchParams(window.location.search).get("token");
+        if (!token) {
+            setForm(f => ({ ...f, error: "No session token provided in URL." }));
+            setStep("error");
+            return;
+        }
+
+        // Fetch session info
+        axios.get(`${API_BASE}/api/student/session-info?token=${token}`)
+            .then(res => {
+                setSessionData(res.data);
+                setStep("form");
+                // Start GPS acquisition
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => setGeo({ lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy, status: "locked" }),
+                    (err) => setGeo({ lat: null, lon: null, acc: null, status: "failed" }),
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            })
+            .catch(err => {
+                setForm(f => ({ ...f, error: err?.response?.data?.error || "Invalid or expired session link." }));
+                setStep("error");
+            });
+    }, []);
+
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
     const submit = async () => {
-        if (!form.sid || !form.name || !form.course) return;
+        if (!form.sid || !form.name || !sessionData) return;
         setLoading(true);
         try {
-            // Get current GPS position
-            const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 10000 })).catch(() => null);
+            const token = new URLSearchParams(window.location.search).get("token");
             const payload = {
                 studentId: form.sid,
                 studentName: form.name,
-                courseCode: form.course,
-                latitude: pos?.coords?.latitude || 0,
-                longitude: pos?.coords?.longitude || 0,
-                accuracy: pos?.coords?.accuracy || 999,
-                token: new URLSearchParams(window.location.search).get("token") || "",
+                courseCode: sessionData.course_code,
+                latitude: geo.lat || 0,
+                longitude: geo.lon || 0,
+                accuracy: geo.acc || 999,
+                token: token
             };
             await axios.post(`${API_BASE}/api/student/submit`, payload);
             setStep("success");
         } catch (e) {
-            const msg = e?.response?.data?.error || "Submission failed. Check your QR code is still valid.";
-            // Show error but don't crash
-            setForm(f => ({ ...f, error: msg }));
+            setForm(f => ({ ...f, error: e?.response?.data?.error || "Submission failed. Check your QR code is still valid." }));
         }
         finally { setLoading(false); }
     };
+
     return (
         <div className="cb-submit-page">
             <div className="cb-submit-card">
                 <div className="cb-submit-logo">
                     <div><img src="/logo.png" style={{ height: 52, width: 52, objectFit: "contain" }} /></div>
-                    <div className="cb-submit-title">Acadience Attendance</div>
-                    <div className="cb-submit-sub">Scan QR · Enter details · Submit</div>
+                    <div className="cb-submit-title">Acadience Check-in</div>
+                    {sessionData && <div className="cb-submit-sub">{sessionData.course_code} — {sessionData.course_title}</div>}
                 </div>
-                {step === "form" && (
-                    <div>
-                        <div className="cb-form-row"><label className="cb-form-lbl">Student ID</label><input className="cb-form-input" placeholder="e.g. 10001234" value={form.sid} onChange={e => set("sid", e.target.value)} /></div>
-                        <div className="cb-form-row"><label className="cb-form-lbl">Full Name</label><input className="cb-form-input" placeholder="Your full name" value={form.name} onChange={e => set("name", e.target.value)} /></div>
-                        <div className="cb-form-row">
-                            <label className="cb-form-lbl">Course</label>
-                            <select className="cb-form-select" value={form.course} onChange={e => set("course", e.target.value)}>
-                                <option value="">Select your course…</option>
-                                {/* courses loaded from URL params or public endpoint */}
-                            </select>
-                        </div>
-                        <div className="cb-form-row">
-                            <label className="cb-form-lbl">Location</label>
-                            <div className="cb-geo-preview">
-                                <div className="cb-geo-ring" style={{ width: 100, height: 100 }} /><div className="cb-geo-ring" style={{ width: 64, height: 64, animationDelay: ".6s" }} /><div className="cb-geo-ring" style={{ width: 32, height: 32, animationDelay: "1.2s" }} /><div className="cb-geo-dot" />
-                                <div className="cb-geo-lbl">Acquiring GPS location…</div>
-                            </div>
-                        </div>
-                        {form.error && <div style={{ background: "#FEF2F2", color: "var(--red)", border: "1.5px solid rgba(207,48,74,.2)", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12 }}>{form.error}</div>}<button className="cb-btn-signup" style={{ width: "100%", padding: 14, fontSize: 15, borderRadius: 100, opacity: loading ? .75 : 1 }} onClick={submit} disabled={loading}>{loading ? "Submitting…" : "Submit Attendance"}</button>
-                        <p style={{ textAlign: "center", marginTop: 14, fontSize: 12, color: "var(--gray-400)" }}>Geofenced · Device-fingerprinted · Time-window enforced</p>
-                        <button onClick={() => setPage("home")} style={{ display: "flex", alignItems: "center", gap: 4, margin: "16px auto 0", background: "none", border: "none", fontSize: 13, color: "var(--gray-400)", cursor: "pointer" }}><ChevronLeft size={13} /> Back to home</button>
+
+                {step === "loading" && (
+                    <div style={{ textAlign: "center", padding: "40px 0" }}>
+                        <div className="cb-geo-ring" style={{ width: 40, height: 40, margin: "0 auto", position: "relative", animation: "geoP 1.5s infinite" }} />
+                        <div style={{ marginTop: 20, color: "var(--gray-500)", fontSize: 14 }}>Loading session details...</div>
                     </div>
                 )}
+
+                {step === "error" && (
+                    <div style={{ textAlign: "center", padding: "20px 0" }}>
+                        <div style={{ background: "#FEF2F2", color: "var(--red)", border: "1.5px solid rgba(207,48,74,.2)", borderRadius: 10, padding: "16px", fontSize: 14, marginBottom: 20 }}>
+                            {form.error}
+                        </div>
+                        <button onClick={() => setPage("home")} className="cb-btn-signin" style={{ width: "100%", padding: 12 }}>Back to Home</button>
+                    </div>
+                )}
+
+                {step === "form" && (
+                    <div>
+                        <div className="cb-form-row">
+                            <label className="cb-form-lbl">Student ID</label>
+                            <input className="cb-form-input" placeholder="e.g. 10001234" value={form.sid} onChange={e => set("sid", e.target.value)} />
+                        </div>
+                        <div className="cb-form-row">
+                            <label className="cb-form-lbl">Full Name</label>
+                            <input className="cb-form-input" placeholder="Your full name" value={form.name} onChange={e => set("name", e.target.value)} />
+                        </div>
+                        <div className="cb-form-row">
+                            <label className="cb-form-lbl">Status</label>
+                            <div style={{ background: "#F9FAFB", padding: "12px", borderRadius: 10, border: "1px solid var(--gray-200)", display: "flex", alignItems: "center", gap: 10 }}>
+                                {geo.status === "acquiring" ? (
+                                    <><div style={{ width: 14, height: 14, border: "2px solid var(--blue)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 1s linear infinite" }} /><span style={{ fontSize: 14, color: "var(--gray-500)" }}>Acquiring GPS location...</span></>
+                                ) : geo.status === "locked" ? (
+                                    <><Check size={16} color="var(--green)" /><span style={{ fontSize: 13, color: "var(--green)", fontWeight: 500 }}>GPS Locked (Acc: {Math.round(geo.acc)}m)</span></>
+                                ) : (
+                                    <><AlertCircle size={16} color="var(--red)" /><span style={{ fontSize: 13, color: "var(--red)", fontWeight: 500 }}>GPS Failed. Please allow Location access.</span></>
+                                )}
+                            </div>
+                        </div>
+
+                        {form.error && <div style={{ background: "#FEF2F2", color: "var(--red)", border: "1.5px solid rgba(207,48,74,.2)", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12 }}>{form.error}</div>}
+                        <button className="cb-btn-signup" style={{ width: "100%", padding: 14, fontSize: 15, borderRadius: 100, opacity: loading ? .75 : 1 }} onClick={submit} disabled={loading || geo.status === "acquiring"}>
+                            {loading ? "Submitting…" : "Record Attendance"}
+                        </button>
+                    </div>
+                )}
+
                 {step === "success" && (
                     <div className="cb-submit-success">
                         <div className="cb-submit-success-icon"><Check size={28} strokeWidth={3} /></div>
                         <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.5px" }}>Attendance Recorded!</div>
-                        <p style={{ fontSize: 14, color: "var(--gray-500)", textAlign: "center", lineHeight: 1.6 }}>Your attendance for <strong>{form.course}</strong> has been recorded.</p>
+                        <p style={{ fontSize: 14, color: "var(--gray-500)", textAlign: "center", lineHeight: 1.6 }}>Your attendance for <strong>{sessionData?.course_code}</strong> is verified.</p>
                         <div className="cb-receipt">
-                            {[["Student ID", form.sid], ["Name", form.name], ["Course", form.course], ["Time", new Date().toLocaleTimeString()], ["Status", "Verified <Check size={13}/>"]].map(([k, v]) => (
+                            {[["Student ID", form.sid], ["Name", form.name], ["Time", new Date().toLocaleTimeString()], ["Status", "Verified <Check size={13}/>"]].map(([k, v]) => (
                                 <div key={k} className="cb-receipt-row"><span className="cb-receipt-k">{k}</span><span className="cb-receipt-v" style={k === "Status" ? { color: "var(--green)" } : {}}>{v}</span></div>
                             ))}
                         </div>
-                        <button className="cb-btn-dark" style={{ width: "100%", padding: 13, borderRadius: 100 }} onClick={() => { setStep("form"); setForm({ sid: "", name: "", course: "", error: "" }); }}>Submit Another</button>
-                        <button onClick={() => setPage("home")} style={{ background: "none", border: "none", fontSize: 13, color: "var(--gray-400)", cursor: "pointer", marginTop: 8 }} style={{ display: "flex", alignItems: "center", gap: 4 }}><ChevronLeft size={13} /> Back to home</button>
                     </div>
                 )}
             </div>
@@ -1595,10 +1766,133 @@ function AuthPage({ initialMode = "login", onAuth, toast }) {
     );
 }
 
+/* ────────── DOCS PAGE ────────── */
+function DocsPage({ setPage }) {
+    const [activeSection, setActiveSection] = useState("quickstart");
+
+    const sections = [
+        { id: "quickstart", title: "Quickstart" },
+        { id: "geofencing", title: "Geofencing" },
+        { id: "qr", title: "Dynamic QR Codes" },
+        { id: "devices", title: "Device Fingerprinting" },
+        { id: "privacy", title: "Student Privacy" }
+    ];
+
+    const content = {
+        quickstart: (
+            <div>
+                <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-1.5px", marginBottom: 16 }}>Quickstart Guide</h1>
+                <p style={{ fontSize: 16, color: "var(--gray-500)", lineHeight: 1.6, marginBottom: 32 }}>Get up and running with Acadience Attendance in three easy steps.</p>
+
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginTop: 32, marginBottom: 12 }}>1. Add your courses</h3>
+                <p style={{ marginBottom: 16, lineHeight: 1.6, color: "var(--gray-600)" }}>Once you sign in, go to the <strong>Courses</strong> tab and click "+ Add Course". You only need to provide the course code (e.g., CS401) and the title.</p>
+
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginTop: 32, marginBottom: 12 }}>2. Start a live session</h3>
+                <p style={{ marginBottom: 16, lineHeight: 1.6, color: "var(--gray-600)" }}>From the Dashboard or Sessions tab, click "+ New Session". Select a course, set the duration, and define your geofence radius. Acadience will automatically capture your current GPS location to center the geofence.</p>
+
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginTop: 32, marginBottom: 12 }}>3. Display the QR code</h3>
+                <p style={{ marginBottom: 16, lineHeight: 1.6, color: "var(--gray-600)" }}>Project the generated QR code on the big screen. Students scan it with their default camera app — no app downloads required. The QR code rotates every 30 seconds to prevent proxy attendance via shared screenshots.</p>
+            </div>
+        ),
+        geofencing: (
+            <div>
+                <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-1.5px", marginBottom: 16 }}>Geofencing</h1>
+                <p style={{ fontSize: 16, color: "var(--gray-500)", lineHeight: 1.6, marginBottom: 32 }}>How Acadience uses GPS to ensure physical presence.</p>
+
+                <p style={{ marginBottom: 16, lineHeight: 1.6, color: "var(--gray-600)" }}>We use the Haversine formula to calculate the exact great-circle distance between the student's device and the location where the session was created.</p>
+
+                <div style={{ background: "#F9FAFB", padding: 20, borderRadius: 12, border: "1px solid var(--gray-200)", marginBottom: 24 }}>
+                    <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 8 }}>Configuration</h4>
+                    <p style={{ fontSize: 14, color: "var(--gray-500)" }}>When creating a session, you set a radius (default is 100 meters). We recommend 100-150m for large lecture halls to account for GPS drift and indoor signal degradation.</p>
+                </div>
+
+                <p style={{ marginBottom: 16, lineHeight: 1.6, color: "var(--gray-600)" }}>If a student submits attendance from outside the radius, their submission goes through but is marked as <strong>Flagged</strong>. You can review flagged submissions in the Dashboard to manually approve or reject them.</p>
+            </div>
+        ),
+        qr: (
+            <div>
+                <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-1.5px", marginBottom: 16 }}>Dynamic QR Codes</h1>
+                <p style={{ fontSize: 16, color: "var(--gray-500)", lineHeight: 1.6, marginBottom: 32 }}>Preventing proxy check-ins.</p>
+
+                <p style={{ marginBottom: 16, lineHeight: 1.6, color: "var(--gray-600)" }}>Static QR codes are easy to compromise — a student can simply take a photo and send it to their friends in the dorm. Acadience solves this with rotating cryptographic tokens.</p>
+
+                <ul style={{ paddingLeft: 20, marginBottom: 24, display: "flex", flexDirection: "column", gap: 12, color: "var(--gray-600)" }}>
+                    <li>The QR code changes every 30 seconds.</li>
+                    <li>Each code encodes a unique, HMAC-signed JSON Web Token (JWT).</li>
+                    <li>The token includes a timestamp and a strict expiration window.</li>
+                    <li>If a student scans a photo sent by a friend 2 minutes ago, the server rejects the token as expired.</li>
+                </ul>
+            </div>
+        ),
+        devices: (
+            <div>
+                <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-1.5px", marginBottom: 16 }}>Device Fingerprinting</h1>
+                <p style={{ fontSize: 16, color: "var(--gray-500)", lineHeight: 1.6, marginBottom: 32 }}>One device = One submission.</p>
+
+                <p style={{ marginBottom: 16, lineHeight: 1.6, color: "var(--gray-600)" }}>To prevent a single student from bringing five phones to class and submitting for their friends, Acadience employs lightweight device fingerprinting.</p>
+                <p style={{ marginBottom: 16, lineHeight: 1.6, color: "var(--gray-600)" }}>We hash a combination of the device's screen resolution, color depth, timezone, and User-Agent string. While not completely identifying, it is sufficient to alert the system when the exact same obscure device profile submits multiple times in the same session.</p>
+            </div>
+        ),
+        privacy: (
+            <div>
+                <h1 style={{ fontSize: 40, fontWeight: 800, letterSpacing: "-1.5px", marginBottom: 16 }}>Student Privacy</h1>
+                <p style={{ fontSize: 16, color: "var(--gray-500)", lineHeight: 1.6, marginBottom: 32 }}>Built with FERPA/GDPR compliance in mind.</p>
+
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginTop: 32, marginBottom: 12 }}>No accounts required</h3>
+                <p style={{ marginBottom: 16, lineHeight: 1.6, color: "var(--gray-600)" }}>Students do not create accounts, set passwords, or provide persistent email addresses. They simply enter their Student ID and Name per session.</p>
+
+                <h3 style={{ fontSize: 20, fontWeight: 700, marginTop: 32, marginBottom: 12 }}>Location Data</h3>
+                <p style={{ marginBottom: 16, lineHeight: 1.6, color: "var(--gray-600)" }}>We only request GPS permission at the exact moment of check-in. The browser handles the prompt, and we immediately discard the data after calculating the distance to the lecture hall. We do not track student movement over time.</p>
+            </div>
+        )
+    };
+
+    return (
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+            <nav className="cb-nav" style={{ borderBottom: "1px solid var(--gray-100)" }}>
+                <div className="cb-nav-inner" style={{ justifyContent: "space-between" }}>
+                    <div className="cb-logo" onClick={() => setPage("home")}>
+                        <img src="/logo.png" style={{ height: 32, width: 32, objectFit: "contain" }} />
+                        <span className="cb-logo-text">Acadience</span>
+                    </div>
+                    <button className="cb-nav-btn" onClick={() => setPage("home")}>Back to Home</button>
+                </div>
+            </nav>
+
+            <div style={{ display: "flex", flex: 1, maxWidth: 1200, margin: "0 auto", width: "100%", padding: "40px 20px", gap: 60, flexDirection: window.innerWidth <= 768 ? "column" : "row" }}>
+                <div style={{ width: window.innerWidth <= 768 ? "100%" : 240, flexShrink: 0 }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 20 }}>Documentation</h4>
+                    <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                        {sections.map(s => (
+                            <li key={s.id}>
+                                <button
+                                    onClick={() => setActiveSection(s.id)}
+                                    style={{
+                                        width: "100%", textAlign: "left", padding: "8px 12px", borderRadius: 8, border: "none",
+                                        background: activeSection === s.id ? "var(--gray-50)" : "transparent",
+                                        color: activeSection === s.id ? "var(--blue)" : "var(--gray-600)",
+                                        fontSize: 15, fontWeight: activeSection === s.id ? 600 : 500, cursor: "pointer", transition: "all .1s"
+                                    }}
+                                >
+                                    {s.title}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div style={{ flex: 1, maxWidth: 680 }}>
+                    {content[activeSection]}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function App() {
     const [page, setPage] = useState(() => {
         const p = window.location.pathname.replace("/", "");
-        if (["login", "signup", "dashboard", "student"].includes(p)) return p;
+        if (["login", "signup", "dashboard", "student", "docs"].includes(p)) return p;
         return "home";
     });
     const toast = useToast();
@@ -1612,7 +1906,7 @@ export default function App() {
     useEffect(() => {
         const handlePop = () => {
             const p = window.location.pathname.replace("/", "");
-            setPage(["login", "signup", "dashboard", "student"].includes(p) ? p : "home");
+            setPage(["login", "signup", "dashboard", "student", "docs"].includes(p) ? p : "home");
         };
         window.addEventListener("popstate", handlePop);
         return () => window.removeEventListener("popstate", handlePop);
@@ -1640,6 +1934,7 @@ export default function App() {
                 isAuth ? <Dashboard toast={toast} /> : <AuthPage initialMode="login" onAuth={() => navigate("dashboard")} toast={toast} />
             )}
             {page === "student" && <StudentPage setPage={navigate} />}
+            {page === "docs" && <DocsPage setPage={navigate} />}
             <Toasts ts={toast.ts} />
         </>
     );

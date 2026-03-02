@@ -2,6 +2,9 @@ const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8"
 };
 
+const MAX_BODY_SIZE = 8192; // 8 KB max request body
+const MAX_INPUT_LEN = 200; // Max length for any text input field
+
 let accessCertCache = { expiresAt: 0, keys: [] };
 
 export default {
@@ -12,18 +15,70 @@ export default {
     }
 
     try {
+      // ── Security: enforce content-length on POST requests ──
+      if (request.method === "POST") {
+        const contentLength = request.headers.get("content-length");
+        if (contentLength && Number(contentLength) > MAX_BODY_SIZE) {
+          return jsonResponse({ error: "Request body too large" }, 413, env, request);
+        }
+      }
+
+      if (request.method !== "GET" && request.method !== "POST" && request.method !== "DELETE") {
+        return jsonResponse({ error: "Method not allowed" }, 405, env, request);
+      }
+
       if (url.pathname === "/api/health") {
         return jsonResponse({ ok: true, time: new Date().toISOString() }, 200, env, request);
       }
 
+      // Public endpoint: decode QR token and return session info for students
+      if (url.pathname === "/api/student/session-info" && request.method === "GET") {
+        const token = url.searchParams.get("token") || "";
+        assert(token, "token query parameter is required", 400);
+
+        const qrPayload = await verifyQrToken(token, env);
+        assert(qrPayload, "Invalid or expired QR token", 401);
+
+        const session = await env.DB.prepare(
+          `SELECT s.session_id, s.course_id, s.start_time, s.end_time, s.geofence_radius,
+                  s.location_lat, s.location_lon, s.qr_nonce, s.qr_expiry, c.course_code, c.title as course_title
+           FROM sessions s
+           JOIN courses c ON c.course_id = s.course_id
+           WHERE s.session_id = ?`
+        ).bind(qrPayload.sid).first();
+        assert(session, "Session not found", 404);
+
+        // Check nonce + expiry
+        const now = new Date();
+        if (qrPayload.nonce !== session.qr_nonce || now > new Date(session.qr_expiry)) {
+          return jsonResponse({ error: "QR code has expired. Ask your lecturer to refresh." }, 401, env, request);
+        }
+        if (now > new Date(session.end_time)) {
+          return jsonResponse({ error: "This session has ended." }, 410, env, request);
+        }
+
+        return jsonResponse({
+          session_id: session.session_id,
+          course_code: session.course_code,
+          course_title: session.course_title,
+          start_time: session.start_time,
+          end_time: session.end_time,
+          geofence_radius: session.geofence_radius,
+        }, 200, env, request);
+      }
+
+
       if (url.pathname === "/api/lecturer/register" && request.method === "POST") {
-        const body = await readJson(request);
-        const email = cleanText(body.email);
-        const fullName = cleanText(body.full_name);
+        const body = await readJsonSafe(request);
+        const email = sanitize(body.email);
+        const fullName = sanitize(body.full_name);
         const password = body.password || "";
 
         assert(email && fullName && password, "email, full_name, and password are required", 400);
+        assert(isValidEmail(email), "invalid email format", 400);
         assert(password.length >= 8, "password must be at least 8 characters", 400);
+        assert(password.length <= 128, "password too long", 400);
+        assert(fullName.length <= MAX_INPUT_LEN, "full_name too long", 400);
 
         const existing = await env.DB.prepare(
           "SELECT lecturer_id FROM lecturers WHERE email = ?"
@@ -39,11 +94,12 @@ export default {
       }
 
       if (url.pathname === "/api/lecturer/login" && request.method === "POST") {
-        const body = await readJson(request);
-        const email = cleanText(body.email);
+        const body = await readJsonSafe(request);
+        const email = sanitize(body.email);
         const password = body.password || "";
 
         assert(email && password, "email and password are required", 400);
+        assert(isValidEmail(email), "invalid email format", 400);
 
         const lecturer = await env.DB.prepare(
           "SELECT lecturer_id, email, full_name, password_hash FROM lecturers WHERE email = ?"
@@ -72,32 +128,55 @@ export default {
       if (url.pathname === "/api/lecturer/courses" && request.method === "GET") {
         const lecturer = await requireLecturer(request, env, ctx);
         const rows = await env.DB.prepare(
-          "SELECT course_id, course_code, title, created_at FROM courses WHERE lecturer_email = ? ORDER BY course_code"
+          "SELECT course_id as id, course_code, title, created_at FROM courses WHERE lecturer_email = ? ORDER BY course_code"
         ).bind(lecturer.email).all();
         return jsonResponse({ courses: rows.results }, 200, env, request);
       }
 
       if (url.pathname === "/api/lecturer/courses" && request.method === "POST") {
         const lecturer = await requireLecturer(request, env, ctx);
-        const body = await readJson(request);
-        const courseCode = cleanText(body.course_code);
-        const title = cleanText(body.title);
+        const body = await readJsonSafe(request);
+        const courseCode = sanitize(body.course_code);
+        const title = sanitize(body.title);
         assert(courseCode && title, "course_code and title are required", 400);
+        assert(courseCode.length <= 20, "course_code too long (max 20 chars)", 400);
+        assert(title.length <= MAX_INPUT_LEN, "title too long", 400);
+        assert(/^[A-Z0-9\-_ ]+$/i.test(courseCode), "course_code contains invalid characters", 400);
 
-        await env.DB.prepare(
+        const result = await env.DB.prepare(
           "INSERT INTO courses (course_code, title, lecturer_email) VALUES (?, ?, ?)"
         ).bind(courseCode, title, lecturer.email).run();
 
-        return jsonResponse({ ok: true }, 201, env, request);
+        const inserted = await env.DB.prepare(
+          "SELECT course_id as id, course_code, title, created_at FROM courses WHERE rowid = ?"
+        ).bind(result.meta.last_row_id).first();
+
+        return jsonResponse({ ok: true, course: inserted }, 201, env, request);
+      }
+
+      if (url.pathname.startsWith("/api/lecturer/courses/") && request.method === "DELETE") {
+        const lecturer = await requireLecturer(request, env, ctx);
+        const courseId = Number(url.pathname.split("/")[4]);
+        assert(courseId, "invalid course id", 400);
+
+        const course = await env.DB.prepare(
+          "SELECT course_id FROM courses WHERE course_id = ? AND lecturer_email = ?"
+        ).bind(courseId, lecturer.email).first();
+        assert(course, "course not found", 404);
+
+        await env.DB.prepare("DELETE FROM courses WHERE course_id = ?").bind(courseId).run();
+        return jsonResponse({ ok: true }, 200, env, request);
       }
 
       if (url.pathname === "/api/lecturer/students" && request.method === "POST") {
         await requireLecturer(request, env, ctx);
-        const body = await readJson(request);
-        const indexNumber = cleanText(body.index_number);
-        const fullName = cleanText(body.full_name);
-        const programme = cleanText(body.programme || "");
+        const body = await readJsonSafe(request);
+        const indexNumber = sanitize(body.index_number);
+        const fullName = sanitize(body.full_name);
+        const programme = sanitize(body.programme || "");
         assert(indexNumber && fullName, "index_number and full_name are required", 400);
+        assert(indexNumber.length <= 30, "index_number too long", 400);
+        assert(fullName.length <= MAX_INPUT_LEN, "full_name too long", 400);
 
         await env.DB.prepare(
           "INSERT INTO students (index_number, full_name, programme) VALUES (?, ?, ?)"
@@ -108,9 +187,9 @@ export default {
 
       if (url.pathname === "/api/lecturer/enrollments" && request.method === "POST") {
         await requireLecturer(request, env, ctx);
-        const body = await readJson(request);
+        const body = await readJsonSafe(request);
         const courseId = Number(body.course_id);
-        const studentIndex = cleanText(body.student_index);
+        const studentIndex = sanitize(body.student_index);
         assert(courseId && studentIndex, "course_id and student_index are required", 400);
 
         await env.DB.prepare(
@@ -122,19 +201,24 @@ export default {
 
       if (url.pathname === "/api/lecturer/sessions" && request.method === "POST") {
         const lecturer = await requireLecturer(request, env, ctx);
-        const body = await readJson(request);
+        const body = await readJsonSafe(request);
         const courseId = Number(body.course_id);
         const geofenceRadius = Number(body.geofence_radius || 300);
         const sessionMinutes = Number(body.session_minutes || 60);
         const qrMinutes = Number(body.qr_minutes || 20);
-        const locationLat = Number(body.location_lat);
-        const locationLon = Number(body.location_lon);
+        const locationLat = body.location_lat !== undefined ? Number(body.location_lat) : 0;
+        const locationLon = body.location_lon !== undefined ? Number(body.location_lon) : 0;
 
-        assert(courseId && geofenceRadius > 0 && sessionMinutes > 0 && qrMinutes > 0
-          && Number.isFinite(locationLat) && Number.isFinite(locationLon),
-          "course_id, geofence_radius, session_minutes, qr_minutes, location_lat, location_lon are required",
+        assert(courseId && geofenceRadius > 0 && sessionMinutes > 0 && qrMinutes > 0,
+          "course_id, geofence_radius, session_minutes, and qr_minutes are required",
           400
         );
+        assert(geofenceRadius <= 10000, "geofence_radius must be <= 10 km", 400);
+        assert(sessionMinutes <= 480, "session_minutes must be <= 8 hours", 400);
+        assert(qrMinutes <= 120, "qr_minutes must be <= 2 hours", 400);
+        if (locationLat !== 0 || locationLon !== 0) {
+          assert(Math.abs(locationLat) <= 90 && Math.abs(locationLon) <= 180, "invalid coordinates", 400);
+        }
 
         const course = await env.DB.prepare(
           "SELECT course_id FROM courses WHERE course_id = ? AND lecturer_email = ?"
@@ -179,9 +263,9 @@ export default {
         assert(session, "session not found", 404);
 
         const attendance = await env.DB.prepare(
-          `SELECT a.attendance_id, a.student_index, s.full_name, s.programme, a.timestamp, a.latitude, a.longitude, a.accuracy, a.status, a.reason, a.flags
+          `SELECT a.attendance_id, a.student_index, st.full_name, st.programme, a.timestamp, a.latitude, a.longitude, a.accuracy, a.status, a.reason, a.flags
            FROM attendance a
-           LEFT JOIN students s ON s.index_number = a.student_index
+           LEFT JOIN students st ON st.index_number = a.student_index
            WHERE a.session_id = ?
            ORDER BY a.timestamp DESC`
         ).bind(sessionId).all();
@@ -224,10 +308,10 @@ export default {
       }
 
       if (url.pathname === "/api/student/submit" && request.method === "POST") {
-        const body = await readJson(request);
-        const studentId = cleanText(body.student_id);
-        const studentName = cleanText(body.student_name);
-        const courseCode = cleanText(body.course_code);
+        const body = await readJsonSafe(request);
+        const studentId = sanitize(body.student_id);
+        const studentName = sanitize(body.student_name);
+        const courseCode = sanitize(body.course_code);
         const qrToken = body.qr_token || "";
         const latitude = Number(body.latitude);
         const longitude = Number(body.longitude);
@@ -235,7 +319,9 @@ export default {
         const device = body.device || {};
 
         assert(studentId && studentName && courseCode && qrToken, "student_id, student_name, course_code and qr_token are required", 400);
+        assert(studentId.length <= 30 && studentName.length <= MAX_INPUT_LEN, "input too long", 400);
         assert(Number.isFinite(latitude) && Number.isFinite(longitude), "latitude and longitude required", 400);
+        assert(Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180, "invalid coordinates", 400);
 
         const qrPayload = await verifyQrToken(qrToken, env);
         assert(qrPayload, "invalid QR token", 401);
@@ -342,7 +428,7 @@ export default {
 function handleOptions(request, env) {
   const headers = corsHeaders(request, env);
   headers.set("access-control-max-age", "86400");
-  headers.set("access-control-allow-methods", "GET, POST, OPTIONS, PATCH, DELETE");
+  headers.set("access-control-allow-methods", "GET, POST, DELETE, OPTIONS");
   headers.set("access-control-allow-headers", "content-type, authorization, cf-access-jwt-assertion");
   return new Response(null, { status: 204, headers });
 }
@@ -363,11 +449,10 @@ function corsHeaders(request, env) {
   } else if (allowed && origin === allowed) {
     headers.set("access-control-allow-origin", allowed);
   } else if (origin) {
-    // Fallback: allow the origin if it looks like a Cloudflare Pages preview
     headers.set("access-control-allow-origin", origin);
   }
 
-  headers.set("access-control-allow-methods", "GET, POST, OPTIONS, PATCH, DELETE");
+  headers.set("access-control-allow-methods", "GET, POST, OPTIONS");
   headers.set("access-control-allow-headers", "content-type, authorization, cf-access-jwt-assertion");
   headers.set("vary", "origin");
   headers.set("access-control-allow-credentials", "true");
@@ -378,6 +463,10 @@ function jsonResponse(payload, status, env, request) {
   const headers = new Headers(JSON_HEADERS);
   const cors = corsHeaders(request, env);
   cors.forEach((value, key) => headers.set(key, value));
+  // Security headers
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("x-frame-options", "DENY");
+  headers.set("referrer-policy", "strict-origin-when-cross-origin");
   return new Response(JSON.stringify(payload), { status, headers });
 }
 
@@ -390,14 +479,19 @@ function assert(condition, message, status) {
   }
 }
 
-function cleanText(value) {
+function sanitize(value) {
   if (!value) return "";
-  return String(value).trim();
+  return String(value).trim().replace(/[<>"']/g, "").substring(0, MAX_INPUT_LEN);
 }
 
-async function readJson(request) {
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+}
+
+async function readJsonSafe(request) {
   const text = await request.text();
   if (!text) return {};
+  assert(text.length <= MAX_BODY_SIZE, "Request body too large", 413);
   try {
     return JSON.parse(text);
   } catch {

@@ -128,7 +128,7 @@ export default {
       if (url.pathname === "/api/lecturer/courses" && request.method === "GET") {
         const lecturer = await requireLecturer(request, env, ctx);
         const rows = await env.DB.prepare(
-          "SELECT course_id as id, course_code, title, created_at FROM courses WHERE lecturer_email = ? ORDER BY course_code"
+          "SELECT course_id, course_code, title, created_at FROM courses WHERE lecturer_email = ? ORDER BY course_code"
         ).bind(lecturer.email).all();
         return jsonResponse({ courses: rows.results }, 200, env, request);
       }
@@ -148,7 +148,7 @@ export default {
         ).bind(courseCode, title, lecturer.email).run();
 
         const inserted = await env.DB.prepare(
-          "SELECT course_id as id, course_code, title, created_at FROM courses WHERE rowid = ?"
+          "SELECT course_id, course_code, title, created_at FROM courses WHERE rowid = ?"
         ).bind(result.meta.last_row_id).first();
 
         return jsonResponse({ ok: true, course: inserted }, 201, env, request);
@@ -209,10 +209,10 @@ export default {
         const locationLat = body.location_lat !== undefined ? Number(body.location_lat) : 0;
         const locationLon = body.location_lon !== undefined ? Number(body.location_lon) : 0;
 
-        assert(courseId && geofenceRadius > 0 && sessionMinutes > 0 && qrMinutes > 0,
-          "course_id, geofence_radius, session_minutes, and qr_minutes are required",
-          400
-        );
+        assert(courseId, "course_id is required", 400);
+        assert(geofenceRadius > 0, "geofence_radius must be greater than 0", 400);
+        assert(sessionMinutes > 0, "session_minutes must be greater than 0", 400);
+        assert(qrMinutes > 0, "qr_minutes must be greater than 0", 400);
         assert(geofenceRadius <= 10000, "geofence_radius must be <= 10 km", 400);
         assert(sessionMinutes <= 480, "session_minutes must be <= 8 hours", 400);
         assert(qrMinutes <= 120, "qr_minutes must be <= 2 hours", 400);
@@ -249,13 +249,45 @@ export default {
         }, 201, env, request);
       }
 
+      if (url.pathname === "/api/lecturer/sessions" && request.method === "GET") {
+        const lecturer = await requireLecturer(request, env, ctx);
+        const rows = await env.DB.prepare(
+          `SELECT s.session_id, s.course_id, s.start_time, s.end_time, s.geofence_radius, s.qr_nonce, s.qr_expiry, s.status,
+                  c.course_code, c.title as courseName,
+                  (SELECT COUNT(*) FROM attendance a WHERE a.session_id = s.session_id) as attended,
+                  (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = s.course_id) as total,
+                  (SELECT COUNT(*) + 1 FROM sessions s2 WHERE s2.course_id = s.course_id AND s2.start_time < s.start_time) as session_number
+           FROM sessions s
+           JOIN courses c ON c.course_id = s.course_id
+           WHERE c.lecturer_email = ?
+           ORDER BY s.start_time DESC`
+        ).bind(lecturer.email).all();
+
+        const sessions = await Promise.all(rows.results.map(async s => {
+          let qrToken = null;
+          const now = new Date();
+          if (s.status === "active" && now < new Date(s.qr_expiry)) {
+            qrToken = await signQrToken({
+              sid: s.session_id,
+              nonce: s.qr_nonce,
+              exp: Math.floor(new Date(s.qr_expiry).getTime() / 1000),
+              iat: Math.floor(now.getTime() / 1000)
+            }, env);
+          }
+          return { ...s, qr_token: qrToken };
+        }));
+
+        return jsonResponse({ sessions }, 200, env, request);
+      }
+
       if (url.pathname.startsWith("/api/lecturer/sessions/") && request.method === "GET") {
         const lecturer = await requireLecturer(request, env, ctx);
         const sessionId = Number(url.pathname.split("/")[4]);
         assert(sessionId, "invalid session id", 400);
 
         const session = await env.DB.prepare(
-          `SELECT s.session_id, s.course_id, s.start_time, s.end_time, s.geofence_radius, s.qr_expiry, c.course_code
+          `SELECT s.session_id, s.course_id, s.start_time, s.end_time, s.geofence_radius, s.qr_expiry, c.course_code,
+                  (SELECT COUNT(*) + 1 FROM sessions s2 WHERE s2.course_id = s.course_id AND s2.start_time < s.start_time) as session_number
            FROM sessions s
            JOIN courses c ON c.course_id = s.course_id
            WHERE s.session_id = ? AND c.lecturer_email = ?`
@@ -263,14 +295,64 @@ export default {
         assert(session, "session not found", 404);
 
         const attendance = await env.DB.prepare(
-          `SELECT a.attendance_id, a.student_index, st.full_name, st.programme, a.timestamp, a.latitude, a.longitude, a.accuracy, a.status, a.reason, a.flags
-           FROM attendance a
-           LEFT JOIN students st ON st.index_number = a.student_index
-           WHERE a.session_id = ?
-           ORDER BY a.timestamp DESC`
-        ).bind(sessionId).all();
+          `SELECT 
+             e.student_index, 
+             st.full_name, 
+             st.programme, 
+             a.timestamp, 
+             a.latitude, 
+             a.longitude, 
+             a.accuracy, 
+             COALESCE(a.status, 'absent') as status, 
+             a.reason, 
+             a.flags,
+             a.attendance_id
+           FROM enrollments e
+           JOIN students st ON st.index_number = e.student_index
+           LEFT JOIN attendance a ON a.student_index = e.student_index AND a.session_id = ?
+           WHERE e.course_id = ?
+           ORDER BY a.timestamp DESC, st.full_name ASC`
+        ).bind(sessionId, session.course_id).all();
 
         return jsonResponse({ session, attendance: attendance.results }, 200, env, request);
+      }
+
+      if (url.pathname === "/api/lecturer/flags" && request.method === "GET") {
+        const lecturer = await requireLecturer(request, env, ctx);
+        const flags = await env.DB.prepare(
+          `SELECT a.attendance_id, a.student_index, st.full_name as student_name, c.course_code, s.session_id, a.timestamp, a.flags, a.status
+           FROM attendance a
+           JOIN sessions s ON s.session_id = a.session_id
+           JOIN courses c ON c.course_id = s.course_id
+           LEFT JOIN students st ON st.index_number = a.student_index
+           WHERE c.lecturer_email = ? AND (a.status = 'flagged' OR a.status = 'approved' OR a.status = 'rejected')
+           ORDER BY a.timestamp DESC`
+        ).bind(lecturer.email).all();
+        return jsonResponse({ flags: flags.results }, 200, env, request);
+      }
+
+      if (url.pathname.startsWith("/api/lecturer/flags/") && request.method === "POST") {
+        const lecturer = await requireLecturer(request, env, ctx);
+        const parts = url.pathname.split("/");
+        const attendanceId = Number(parts[4]);
+        const action = parts[5]; // approve or reject
+        assert(attendanceId && (action === "approved" || action === "rejected"), "invalid request", 400);
+
+        // Verify ownership via lecturer email
+        const record = await env.DB.prepare(
+          `SELECT a.attendance_id 
+           FROM attendance a
+           JOIN sessions s ON s.session_id = a.session_id
+           JOIN courses c ON c.course_id = s.course_id
+           WHERE a.attendance_id = ? AND c.lecturer_email = ?`
+        ).bind(attendanceId, lecturer.email).first();
+        assert(record, "record not found or access denied", 404);
+
+        await env.DB.prepare(
+          "UPDATE attendance SET status = ? WHERE attendance_id = ?"
+        ).bind(action, attendanceId).run();
+
+        return jsonResponse({ ok: true, status: action }, 200, env, request);
       }
 
       if (url.pathname.startsWith("/api/lecturer/sessions/") && request.method === "POST") {
@@ -305,6 +387,23 @@ export default {
         }, env);
 
         return jsonResponse({ qr_token: qrToken, qr_expires_at: qrExpiry.toISOString() }, 200, env, request);
+      }
+
+      if (url.pathname.startsWith("/api/lecturer/sessions/") && request.method === "DELETE") {
+        const lecturer = await requireLecturer(request, env, ctx);
+        const sessionId = Number(url.pathname.split("/")[4]);
+        assert(sessionId, "invalid session id", 400);
+
+        const session = await env.DB.prepare(
+          `SELECT s.session_id 
+           FROM sessions s
+           JOIN courses c ON c.course_id = s.course_id
+           WHERE s.session_id = ? AND c.lecturer_email = ?`
+        ).bind(sessionId, lecturer.email).first();
+        assert(session, "session not found or access denied", 404);
+
+        await env.DB.prepare("DELETE FROM sessions WHERE session_id = ?").bind(sessionId).run();
+        return jsonResponse({ ok: true }, 200, env, request);
       }
 
       if (url.pathname === "/api/student/submit" && request.method === "POST") {
@@ -352,23 +451,21 @@ export default {
         const deviceHash = await hashDevice(device, request.headers.get("user-agent") || "");
         const flags = [];
 
-        const student = await env.DB.prepare(
-          "SELECT index_number FROM students WHERE index_number = ?"
-        ).bind(studentId).first();
+        // Atomic ensure student exists and is enrolled
+        await env.DB.prepare(
+          `INSERT INTO students (index_number, full_name, programme) VALUES (?, ?, ?)
+           ON CONFLICT(index_number) DO UPDATE SET full_name = excluded.full_name`
+        ).bind(studentId, studentName, courseCode).run();
 
-        if (!student) {
+        const enrollment = await env.DB.prepare(
+          "SELECT enrollment_id FROM enrollments WHERE course_id = ? AND student_index = ?"
+        ).bind(session.course_id, studentId).first();
+
+        if (!enrollment) {
           await env.DB.prepare(
-            "INSERT OR IGNORE INTO students (index_number, full_name, programme) VALUES (?, ?, ?)"
-          ).bind(studentId, studentName, courseCode).run();
-        }
-
-        const enrollmentOk = await isEnrollmentValid(studentId, session.course_id, env);
-        if (!enrollmentOk) {
-          if ((env.ALLOW_UNENROLLED || "false") === "true") {
-            flags.push("unenrolled");
-          } else {
-            return jsonResponse({ status: "rejected", reason: "unenrolled" }, 401, env);
-          }
+            "INSERT INTO enrollments (course_id, student_index) VALUES (?, ?)"
+          ).bind(session.course_id, studentId).run();
+          flags.push("auto_enrolled");
         }
 
         if (accuracy && accuracy > 100) {
@@ -385,8 +482,9 @@ export default {
           flags.push("clustered_location");
         }
 
-        let status = flags.length ? "flagged" : "valid";
-        let reason = flags.length ? flags.join(",") : "";
+        const securityFlags = flags.filter(f => f !== "auto_enrolled");
+        let status = securityFlags.length ? "flagged" : "valid";
+        let reason = flags.join(",");
 
         try {
           await env.DB.prepare(

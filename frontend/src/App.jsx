@@ -1,5 +1,5 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Routes, Route, Navigate, Link, NavLink, useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -213,9 +213,8 @@ a{text-decoration:none;color:inherit}
 .cb-footer-bottom-links a:hover{color:var(--text)}
 
 /* ── DASHBOARD / INTERNAL ── */
-.cb-dash-page{max-width:1440px;margin:0 auto;padding:40px 32px;display:flex;gap:28px}
-.cb-dash-main{flex:1;min-width:0}
-.cb-dash-sidebar{width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:20px}
+.cb-dash-page{max-width:1440px;margin:0 auto;padding:40px 32px}
+.cb-dash-main{width:100%}
 
 /* Stats cards */
 .cb-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
@@ -465,6 +464,12 @@ table.cb-tbl tbody tr:hover{background:var(--gray-50)}
   .cb-footer-grid{grid-template-columns:1fr;}
   .cb-asset-table{display:none;} /* Hide entirely on very small screens */
 }
+.cb-full-qr-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(5,15,25,0.98);z-index:4000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;animation:cbFadeIn .2s ease;cursor:zoom-out}
+@keyframes cbFadeIn{from{opacity:0}to{opacity:1}}
+.cb-full-qr-content{background:white;padding:32px;border-radius:32px;box-shadow:0 40px 100px rgba(0,0,0,0.5);display:flex;flex-direction:column;align-items:center;animation:cbScaleIn .3s cubic-bezier(0.34, 1.56, 0.64, 1)}
+@keyframes cbScaleIn{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}
+.cb-full-qr-close{position:absolute;top:32px;right:32px;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;color:white;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s}
+.cb-full-qr-close:hover{background:rgba(255,255,255,0.25)}
 `;
 
 /* ────────── DATA (live from API) ────────── */
@@ -617,7 +622,8 @@ function MegaMenu({ data, onClose }) {
 }
 
 /* ────────── NAV (home) ────────── */
-function Nav({ setPage, toast }) {
+function Nav({ toast }) {
+    const navigate = useNavigate();
     const [open, setOpen] = useState(null);
     const [mobileOpen, setMobileOpen] = useState(false);
     const ref = useRef(null);
@@ -629,9 +635,9 @@ function Nav({ setPage, toast }) {
     return (
         <nav className="cb-nav" ref={ref}>
             <div className="cb-nav-inner">
-                <div className="cb-logo" onClick={() => setPage("home")}>
+                <Link to="/" className="cb-logo">
                     <img src="/logo.png" style={{ height: 38, width: 38, objectFit: "contain" }} />
-                </div>
+                </Link>
                 {/* Desktop links - hidden on mobile via CSS */}
                 <ul className="cb-nav-links cb-desktop-only">
                     {Object.keys(NAV_MENUS).map(name => (
@@ -646,8 +652,8 @@ function Nav({ setPage, toast }) {
                     <li><button className="cb-nav-btn" onClick={() => toast.add("Pricing coming soon", "warn")}>Pricing</button></li>
                 </ul>
                 <div className="cb-nav-actions">
-                    <button className="cb-btn-signin cb-desktop-only" onClick={() => setPage("login")}>Sign in</button>
-                    <button className="cb-btn-signup cb-desktop-only" onClick={() => setPage("student")}>Student check-in</button>
+                    <button className="cb-btn-signin cb-desktop-only" onClick={() => navigate("/login")}>Sign in</button>
+                    <button className="cb-btn-signup cb-desktop-only" onClick={() => navigate("/student")}>Student check-in</button>
                     {/* Hamburger - visible on mobile only */}
                     <button className="cb-hamburger" onClick={() => setMobileOpen(p => !p)} aria-label="Menu">
                         {mobileOpen ? <X size={22} /> : <><span /><span /><span /></>}
@@ -662,8 +668,8 @@ function Nav({ setPage, toast }) {
                     ))}
                     <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); toast.add("Pricing coming soon", "warn"); }}>Pricing</button>
                     <hr style={{ border: "none", borderTop: "1px solid var(--gray-100)", margin: "8px 0" }} />
-                    <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); setPage("login"); }}>Sign in</button>
-                    <button className="cb-mobile-link cb-mobile-cta" onClick={() => { setMobileOpen(false); setPage("student"); }}>Student check-in</button>
+                    <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); navigate("/login"); }}>Sign in</button>
+                    <button className="cb-mobile-link cb-mobile-cta" onClick={() => { setMobileOpen(false); navigate("/student"); }}>Student check-in</button>
                 </div>
             )}
         </nav>
@@ -671,24 +677,73 @@ function Nav({ setPage, toast }) {
 }
 
 /* ────────── DASHBOARD NAV ────────── */
-function DashNav({ tab, setTab, setPage, onLogout }) {
+function DashNav({ onLogout }) {
+    const navigate = useNavigate();
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const ref = useRef(null);
+
+    useEffect(() => {
+        const h = e => { if (ref.current && !ref.current.contains(e.target)) setMobileOpen(false); };
+        document.addEventListener("mousedown", h);
+        return () => document.removeEventListener("mousedown", h);
+    }, []);
+
+    const navItems = [
+        { label: "Dashboard", to: "/dashboard" },
+        { label: "Sessions", to: "/dashboard/sessions" },
+        { label: "Courses", to: "/dashboard/courses" },
+        { label: "Flagged", to: "/dashboard/flags" },
+    ];
+
     return (
-        <nav className="cb-nav">
+        <nav className="cb-nav" ref={ref} style={{ borderBottom: "1px solid var(--gray-100)" }}>
             <div className="cb-nav-inner">
-                <div className="cb-logo" onClick={() => setPage("home")}>
+                <Link to="/" className="cb-logo">
                     <img src="/logo.png" style={{ height: 38, width: 38, objectFit: "contain" }} />
-                </div>
-                <ul className="cb-nav-links">
-                    {["Dashboard", "Sessions", "Courses", "Flagged", "Students"].map(t => (
-                        <li key={t}><button className={`cb-nav-btn${tab === t ? " open" : ""}`} style={tab === t ? { background: "var(--gray-50)", fontWeight: 600 } : {}} onClick={() => setTab(t)}>{t}</button></li>
+                </Link>
+                <ul className="cb-nav-links cb-desktop-only">
+                    {navItems.map(it => (
+                        <li key={it.label}>
+                            <NavLink
+                                to={it.to}
+                                end={it.to === "/dashboard"}
+                                className={({ isActive }) => `cb-nav-btn${isActive ? " open" : ""}`}
+                            >
+                                {it.label}
+                            </NavLink>
+                        </li>
                     ))}
                 </ul>
                 <div className="cb-nav-actions">
                     <button className="cb-icon-btn"><Bell size={18} /></button>
                     <button className="cb-icon-btn"><Settings size={18} /></button>
                     {onLogout && <button className="cb-icon-btn" onClick={onLogout} title="Sign out"><LogOut size={18} /></button>}
+                    <button className="cb-hamburger" onClick={() => setMobileOpen(p => !p)} aria-label="Menu">
+                        {mobileOpen ? <X size={22} /> : <><span /><span /><span /></>}
+                    </button>
                 </div>
             </div>
+            {mobileOpen && (
+                <div className="cb-mobile-menu">
+                    <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--gray-100)", marginBottom: 8 }}>
+                        <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "1px" }}>Navigate</h4>
+                    </div>
+                    {navItems.map(it => (
+                        <NavLink
+                            key={it.label}
+                            to={it.to}
+                            end={it.to === "/dashboard"}
+                            className={({ isActive }) => `cb-mobile-link${isActive ? " cb-mobile-cta" : ""}`}
+                            onClick={() => setMobileOpen(false)}
+                        >
+                            {it.label}
+                        </NavLink>
+                    ))}
+                    <hr style={{ border: "none", borderTop: "1px solid var(--gray-100)", margin: "8px 0" }} />
+                    <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); onLogout?.(); }}>Sign out</button>
+                    <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); navigate("/"); }}>Back to Website</button>
+                </div>
+            )}
         </nav>
     );
 }
@@ -855,7 +910,8 @@ const ARTICLES = [
 ];
 
 /* ────────── HOME PAGE ────────── */
-function HomePage({ setPage, toast }) {
+function HomePage({ toast }) {
+    const navigate = useNavigate();
     const [heroTab, setHeroTab] = useState("1D");
     const [email, setEmail] = useState("");
     const circles = [
@@ -878,7 +934,7 @@ function HomePage({ setPage, toast }) {
                         <p className="cb-hero-sub">QR-based, geofenced, and serverless. Acadience makes attendance fraud-proof for lecturers and effortless for students.</p>
                         <div className="cb-hero-form">
                             <input type="email" placeholder="institution@university.edu" value={email} onChange={e => setEmail(e.target.value)} />
-                            <button className="cb-hero-form-btn" onClick={() => setPage("login")}>Get started</button>
+                            <button className="cb-hero-form-btn" onClick={() => navigate("/login")}>Get started</button>
                         </div>
 
                     </div>
@@ -897,7 +953,7 @@ function HomePage({ setPage, toast }) {
                     <div>
                         <h2 className="cb-h2">Track every lecture,<br />course, and student.</h2>
                         <p className="cb-p">Real-time attendance rates, per-student records, flagged submission review, and one-click CSV exports — all in one dashboard.</p>
-                        <button className="cb-btn-dark" onClick={() => setPage("login")} style={{ display: "flex", alignItems: "center", gap: 6 }}>Open dashboard <ArrowRight size={16} /></button>
+                        <button className="cb-btn-dark" onClick={() => navigate("/login")} style={{ display: "flex", alignItems: "center", gap: 6 }}>Open dashboard <ArrowRight size={16} /></button>
                     </div>
                     <SessionsAssetTable sessions={[]} />
                 </div>
@@ -913,7 +969,7 @@ function HomePage({ setPage, toast }) {
                         <div className="cb-badge-pill"><div className="cb-badge-dot">QR</div> DYNAMIC QR CODES</div>
                         <h2 className="cb-h2">One scan.<br />Instant, verified attendance.</h2>
                         <p className="cb-p">Each session generates a time-bound QR code signed with HMAC. Codes rotate every 30 seconds — screenshots from yesterday simply won't work. Lecturers can force-refresh any time.</p>
-                        <button className="cb-btn-dark" onClick={() => setPage("student")} style={{ display: "flex", alignItems: "center", gap: 6 }}>Try student check-in <ArrowRight size={16} /></button>
+                        <button className="cb-btn-dark" onClick={() => navigate("/student")} style={{ display: "flex", alignItems: "center", gap: 6 }}>Try student check-in <ArrowRight size={16} /></button>
                     </div>
                 </div>
             </section>
@@ -925,7 +981,7 @@ function HomePage({ setPage, toast }) {
                         <div className="cb-badge-pill"><div className="cb-badge-dot"><MapPin size={18} color="var(--blue)" /></div> GEOFENCING</div>
                         <h2 className="cb-h2">They have to be there<br />to mark themselves present.</h2>
                         <p className="cb-p">Haversine-formula GPS validation checks that each student is within your configurable radius. Submissions from outside are automatically flagged for lecturer review.</p>
-                        <button className="cb-btn-dark" onClick={() => setPage("login")} style={{ display: "flex", alignItems: "center", gap: 6 }}>Review flagged <ArrowRight size={16} /></button>
+                        <button className="cb-btn-dark" onClick={() => navigate("/login")} style={{ display: "flex", alignItems: "center", gap: 6 }}>Review flagged <ArrowRight size={16} /></button>
                     </div>
                     <div style={{ background: "white", borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", aspectRatio: "1", boxShadow: "0 2px 20px rgba(0,0,0,.06)" }}>
                         <div style={{ position: "relative", width: 260, height: 260, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -951,7 +1007,7 @@ function HomePage({ setPage, toast }) {
                         <div className="cb-badge-pill"><div className="cb-badge-dot"><Smartphone size={32} /></div> STUDENT CHECK-IN</div>
                         <h2 className="cb-h2">No app.<br />No account.<br />Just scan.</h2>
                         <p className="cb-p">Students open any browser, scan the QR code displayed in class, fill in their student ID and name — done in under 10 seconds. No app download, no login, no friction.</p>
-                        <button className="cb-btn-dark" onClick={() => setPage("student")} style={{ display: "flex", alignItems: "center", gap: 6 }}>Try it now <ArrowRight size={16} /></button>
+                        <button className="cb-btn-dark" onClick={() => navigate("/student")} style={{ display: "flex", alignItems: "center", gap: 6 }}>Try it now <ArrowRight size={16} /></button>
                     </div>
                     <FeaturePhone />
                 </div>
@@ -1073,7 +1129,6 @@ function SessionsTable({ onView, onNew, toast, sessions = [], courses = [] }) {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
                         <input placeholder="Search sessions…" value={search} onChange={e => setSearch(e.target.value)} />
                     </div>
-                    <button className="cb-btn-signup" style={{ padding: "8px 16px", fontSize: 13 }} onClick={onNew}>+ New Session</button>
                 </div>
             </div>
             <table className="cb-tbl">
@@ -1086,17 +1141,17 @@ function SessionsTable({ onView, onNew, toast, sessions = [], courses = [] }) {
                     {rows.length === 0
                         ? <tr><td colSpan={8} style={{ textAlign: "center", padding: "40px", color: "var(--gray-400)" }}>No sessions found</td></tr>
                         : rows.map(s => (
-                            <tr key={s.id} onClick={() => onView(s)}>
-                                <td><span style={{ fontWeight: 700, color: "var(--text)" }}>{s.courseName}</span></td>
-                                <td>{s.date}</td>
-                                <td style={{ fontVariantNumeric: "tabular-nums" }}>{s.time}</td>
+                            <tr key={s.session_id} onClick={() => onView(s)}>
+                                <td><span style={{ fontWeight: 700, color: "var(--text)" }}>{s.courseName || s.course_code || "Unknown Course"}</span></td>
+                                <td>{s.date || (s.start_time ? s.start_time.split('T')[0] : "—")}</td>
+                                <td style={{ fontVariantNumeric: "tabular-nums" }}>{s.time || (s.start_time ? s.start_time.split('T')[1]?.substring(0, 5) : "—")}</td>
                                 <td className="c">
                                     <span className={`cb-bdg ${s.status === "active" ? "green" : "gray"}`}>
                                         {s.status === "active" && <span className="cb-bdg-dot" />}
                                         {s.status === "active" ? "LIVE" : "CLOSED"}
                                     </span>
                                 </td>
-                                <td className="r" style={{ fontVariantNumeric: "tabular-nums" }}>{s.attended} / {s.total}</td>
+                                <td className="r" style={{ fontVariantNumeric: "tabular-nums" }}>{s.attended || 0} / {s.total || 0}</td>
                                 <td className="r"><span style={{ fontWeight: 600, color: pct(s.attended, s.total) >= 80 ? "var(--green)" : pct(s.attended, s.total) >= 60 ? "#D97706" : "var(--red)" }}>{pct(s.attended, s.total)}%</span></td>
                                 <td className="c">{s.flagged > 0 ? <span className="cb-bdg yellow"><AlertTriangle size={18} /> {s.flagged}</span> : <span style={{ color: "var(--gray-400)" }}>—</span>}</td>
                                 <td className="r" onClick={e => e.stopPropagation()}>
@@ -1107,60 +1162,6 @@ function SessionsTable({ onView, onNew, toast, sessions = [], courses = [] }) {
                                 </td>
                             </tr>
                         ))}
-                </tbody>
-            </table>
-        </div>
-    );
-}
-
-function AttendanceTable({ session }) {
-    const [search, setSearch] = useState("");
-    const [students, setStudents] = useState([]);
-    const [loading, setLoading] = useState(false);
-    useEffect(() => {
-        if (!session?.id) return;
-        setLoading(true);
-        axios.get(`${API_BASE}/api/lecturer/sessions/${session.id}/attendance`, { headers: getAuthHeaders() })
-            .then(r => setStudents(Array.isArray(r.data) ? r.data : []))
-            .catch(() => setStudents([]))
-            .finally(() => setLoading(false));
-    }, [session?.id]);
-    const rows = students.filter(s => (s.student_name || s.name || "").toLowerCase().includes(search.toLowerCase()) || (s.student_id || s.id || "").toString().includes(search));
-    return (
-        <div className="cb-tbl-wrap">
-            <div className="cb-tbl-top">
-                <div className="cb-tbl-title">Attendance — {session?.courseName} · {session?.date}</div>
-                <div className="cb-tbl-filters">
-                    <div className="cb-search-box">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
-                        <input placeholder="Student ID or name…" value={search} onChange={e => setSearch(e.target.value)} />
-                    </div>
-                    <button className="cb-btn-dark" style={{ padding: "8px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><Download size={14} /> Export CSV</button>
-                </div>
-            </div>
-            <table className="cb-tbl">
-                <thead><tr><th>Student ID</th><th>Name</th><th>Course</th><th>Check-in</th><th>Geofence</th><th className="c">Status</th></tr></thead>
-                <tbody>
-                    {loading && <tr><td colSpan={6} style={{ textAlign: "center", padding: 32, color: "var(--gray-400)" }}>Loading…</td></tr>}
-                    {!loading && rows.length === 0 && <tr><td colSpan={6} style={{ textAlign: "center", padding: 32, color: "var(--gray-400)" }}>No records yet</td></tr>}
-                    {rows.map(s => {
-                        const sid = s.student_id || s.id;
-                        const name = s.student_name || s.name || "—";
-                        const course = s.course_code || s.course || session?.courseName || "—";
-                        const time = s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : s.time || "—";
-                        const geoOk = s.geo_valid !== false && (s.geo || "").toLowerCase() !== "out of range";
-                        const flagged = s.flagged || s.flag || false;
-                        return (
-                            <tr key={sid}>
-                                <td style={{ fontVariantNumeric: "tabular-nums", color: "var(--text)", fontWeight: 500 }}>{sid}</td>
-                                <td style={{ fontWeight: 600, color: "var(--text)" }}>{name}</td>
-                                <td>{course}</td>
-                                <td style={{ fontVariantNumeric: "tabular-nums" }}>{time}</td>
-                                <td style={{ fontSize: 13, color: geoOk ? "var(--green)" : "#D97706", display: "flex", alignItems: "center", gap: 4 }}>{geoOk ? <><Check size={13} />In range</> : <><AlertTriangle size={13} />{s.geo || "Out of range"}</>}</td>
-                                <td className="c"><span className={`cb-bdg ${flagged ? "yellow" : "green"}`}>{flagged ? <><AlertTriangle size={12} /> Flagged</> : <><Check size={12} /> Verified</>}</span></td>
-                            </tr>
-                        );
-                    })}
                 </tbody>
             </table>
         </div>
@@ -1179,7 +1180,7 @@ function FlaggedView({ toast }) {
     const handle = async (id, action) => {
         try {
             await axios.post(`${API_BASE}/api/lecturer/flags/${id}/${action}`, {}, { headers: getAuthHeaders() });
-            setItems(it => it.map(i => i.id === id ? { ...i, status: action === "approve" ? "approved" : "rejected" } : i));
+            setItems(it => it.map(i => (i.attendance_id === id) ? { ...i, status: action === "approve" ? "approved" : "rejected" } : i));
             toast.add(action === "approve" ? "Submission approved" : "Submission rejected", action === "approve" ? "success" : "error");
         } catch (e) { toast.add("Action failed", "error"); }
     };
@@ -1195,15 +1196,15 @@ function FlaggedView({ toast }) {
             </div>
             {pending.length === 0 && <div style={{ textAlign: "center", padding: 48, color: "var(--gray-400)" }}><Check size={13} /> All submissions reviewed</div>}
             {pending.map(f => (
-                <div key={f.id} className="cb-flag-card">
+                <div key={f.attendance_id} className="cb-flag-card">
                     <div className="cb-flag-icon"><AlertTriangle size={18} /></div>
                     <div style={{ flex: 1 }}>
-                        <div className="cb-flag-name">{f.student_name || f.student || "Unknown"} <span style={{ fontSize: 12, fontWeight: 400, color: "var(--gray-500)" }}>#{f.student_id || f.sid}</span></div>
-                        <div className="cb-flag-reason">{f.rejection_reason || f.reason}</div>
-                        <div className="cb-flag-meta">{f.course_code || f.session} · {f.submitted_at ? new Date(f.submitted_at).toLocaleDateString() : ""}</div>
+                        <div className="cb-flag-name">{f.student_name || f.student || "Unknown"} <span style={{ fontSize: 12, fontWeight: 400, color: "var(--gray-500)" }}>#{f.student_index || f.student_id}</span></div>
+                        <div className="cb-flag-reason">{f.flags || f.reason}</div>
+                        <div className="cb-flag-meta">{f.course_code || f.session} · {f.timestamp ? new Date(f.timestamp).toLocaleDateString() : ""}</div>
                         <div className="cb-flag-actions">
-                            <button className="cb-flag-approve" onClick={() => handle(f.id, "approved")} style={{ display: "flex", alignItems: "center", gap: 4 }}><Check size={12} /> Approve</button>
-                            <button className="cb-flag-reject" onClick={() => handle(f.id, "rejected")} style={{ display: "flex", alignItems: "center", gap: 4 }}><X size={12} /> Reject</button>
+                            <button className="cb-flag-approve" onClick={() => handle(f.attendance_id, "approved")} style={{ display: "flex", alignItems: "center", gap: 4 }}><Check size={12} /> Approve</button>
+                            <button className="cb-flag-reject" onClick={() => handle(f.attendance_id, "rejected")} style={{ display: "flex", alignItems: "center", gap: 4 }}><X size={12} /> Reject</button>
                         </div>
                     </div>
                 </div>
@@ -1212,9 +1213,9 @@ function FlaggedView({ toast }) {
                 <div style={{ marginTop: 28 }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 14 }}>Resolved</div>
                     {resolved.map(f => (
-                        <div key={f.id} className="cb-flag-card" style={{ opacity: .55 }}>
+                        <div key={f.attendance_id} className="cb-flag-card" style={{ opacity: .55 }}>
                             <div className="cb-flag-icon" style={{ opacity: .6 }}><AlertCircle size={18} /></div>
-                            <div><div className="cb-flag-name">{f.student}</div><div className="cb-flag-reason">{f.reason}</div><span className={`cb-bdg ${f.status === "approved" ? "green" : "red"}`} style={{ marginTop: 6, display: "inline-flex" }}>{f.status}</span></div>
+                            <div><div className="cb-flag-name">{f.student_name || f.student}</div><div className="cb-flag-reason">{f.flags || f.reason}</div><span className={`cb-bdg ${f.status === "approved" ? "green" : "red"}`} style={{ marginTop: 6, display: "inline-flex" }}>{f.status}</span></div>
                         </div>
                     ))}
                 </div>
@@ -1232,7 +1233,7 @@ function CoursesView({ toast, courses = [], onAdd }) {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 20 }}>
                 {courses.map(c => (
-                    <div key={c.id} className="cb-stat-card" style={{ cursor: "pointer" }}>
+                    <div key={c.course_id} className="cb-stat-card" style={{ cursor: "pointer" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                             <div>
                                 <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.5px" }}>{c.code || c.course_code}</div>
@@ -1240,14 +1241,14 @@ function CoursesView({ toast, courses = [], onAdd }) {
                             </div>
                             <span className="cb-bdg blue">{c.enrolled_count || c.enrolled || 0} students</span>
                         </div>
-                        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 16 }}>{c.name}</div>
+                        <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 16 }}>{c.name || c.title}</div>
                         <div style={{ display: "flex", gap: 8 }}>
-                            <button className="cb-filter-pill" style={{ flex: 1, padding: "8px", fontSize: 13 }} onClick={() => toast.add("Viewing " + c.code, "success")}>View</button>
-                            <button className="cb-filter-pill" style={{ flex: 1, padding: "8px", fontSize: 13 }} onClick={() => toast.add("Enrollments for " + c.code, "success")}>Enrollments</button>
+                            <button className="cb-filter-pill" style={{ flex: 1, padding: "8px", fontSize: 13 }} onClick={() => toast.add("Viewing " + (c.code || c.course_code), "success")}>View</button>
+                            <button className="cb-filter-pill" style={{ flex: 1, padding: "8px", fontSize: 13 }} onClick={() => toast.add("Enrollments for " + (c.code || c.course_code), "success")}>Enrollments</button>
                             <button className="cb-filter-pill" style={{ padding: "8px", fontSize: 13, background: "#FEF2F2", color: "var(--red)", border: "1.5px solid rgba(207,48,74,.2)" }} onClick={async () => {
                                 if (window.confirm(`Delete course ${c.code || c.course_code}?`)) {
                                     try {
-                                        await axios.delete(`${API_BASE}/api/lecturer/courses/${c.id}`, { headers: getAuthHeaders() });
+                                        await axios.delete(`${API_BASE}/api/lecturer/courses/${c.course_id}`, { headers: getAuthHeaders() });
                                         toast.add("Course deleted", "success");
                                     } catch (e) {
                                         toast.add(e?.response?.data?.error || "Failed to delete course", "error");
@@ -1280,7 +1281,14 @@ function NewSessionModal({ onClose, onSave, toast, courses = [] }) {
             } catch (err) {
                 toast.add("Could not get GPS location. Geofencing will be disabled.", "warn");
             }
-            await axios.post(`${API_BASE}/api/lecturer/sessions`, { courseId: c.id, latitude: lat, longitude: lon, radius: parseInt(form.radius) || 100, session_minutes: parseInt(form.duration) || 90 }, { headers: getAuthHeaders() });
+            await axios.post(`${API_BASE}/api/lecturer/sessions`, {
+                course_id: c.course_id,
+                location_lat: lat,
+                location_lon: lon,
+                geofence_radius: parseInt(form.radius) || 100,
+                session_minutes: parseInt(form.duration) || 90,
+                qr_minutes: 20
+            }, { headers: getAuthHeaders() });
             toast.add("Session started", "success");
             onSave();
         } catch (e) { toast.add(e?.response?.data?.error || "Failed to create session", "error"); }
@@ -1298,7 +1306,7 @@ function NewSessionModal({ onClose, onSave, toast, courses = [] }) {
                         <label className="cb-form-lbl">Course</label>
                         <select className="cb-form-select" value={form.course} onChange={e => set("course", e.target.value)}>
                             <option value="">Select a course…</option>
-                            {courses.map(c => <option key={c.id} value={c.code || c.course_code}>{c.code || c.course_code} — {c.name || c.course_name}</option>)}
+                            {courses.map(c => <option key={c.course_id} value={c.code || c.course_code}>{c.code || c.course_code} — {c.name || c.title}</option>)}
                         </select>
                     </div>
                     <div className="cb-form-grid">
@@ -1369,34 +1377,111 @@ function NewCourseModal({ onClose, onSave, toast }) {
     );
 }
 
-function SessionDetail({ session, onBack, toast }) {
+function FullscreenQR({ val, title, onClose }) {
+    return (
+        <div className="cb-full-qr-overlay" onClick={onClose}>
+            <button className="cb-full-qr-close" onClick={onClose}><X size={32} /></button>
+            <div className="cb-full-qr-content" onClick={e => e.stopPropagation()}>
+                <div style={{ marginBottom: 24, textAlign: "center" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 8 }}>Dynamic Check-in QR</div>
+                    <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.8px", color: "var(--text)" }}>{title}</div>
+                </div>
+                <div style={{ background: "white", padding: 20, borderRadius: 20, boxShadow: "0 4px 20px rgba(0,0,0,0.08)" }}>
+                    <QRCodeSVG value={val} size={window.innerWidth < 600 ? 300 : 500} />
+                </div>
+                <div style={{ marginTop: 32, fontSize: 16, color: "var(--gray-500)", fontWeight: 500, display: "flex", alignItems: "center", gap: 8 }}>
+                    <RotateCcw size={18} className="spin-slow" /> Rotates every 30s
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+function SessionDetail({ toast, onShowQR }) {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const [session, setSession] = useState(null);
+    const [attendance, setAttendance] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [tab, setTab] = useState("attendance");
+    const [flags, setFlags] = useState([]);
+
+    const fetchDetail = useCallback(async () => {
+        try {
+            const h = { headers: getAuthHeaders() };
+            const [sessionRes, attendanceRes, flagsRes] = await Promise.all([
+                axios.get(`${API_BASE}/api/lecturer/sessions/${id}`, h),
+                axios.get(`${API_BASE}/api/lecturer/sessions/${id}/attendance`, h),
+                axios.get(`${API_BASE}/api/lecturer/sessions/${id}/flags`, h),
+            ]);
+            setSession(sessionRes.data.session);
+            setAttendance(attendanceRes.data.attendance);
+            setFlags(flagsRes.data.flags);
+        } catch (e) { toast.add("Failed to load session", "error"); navigate("/dashboard/sessions"); }
+        finally { setLoading(false); }
+    }, [id, navigate, toast]);
+
+    useEffect(() => {
+        fetchDetail();
+        const timer = setInterval(fetchDetail, 10000);
+        return () => clearInterval(timer);
+    }, [fetchDetail]);
+
+    const handleDelete = async () => {
+        if (!window.confirm("Are you sure you want to delete this session? All attendance records will be lost.")) return;
+        try {
+            await axios.delete(`${API_BASE}/api/lecturer/sessions/${id}`, { headers: getAuthHeaders() });
+            toast.add("Session deleted", "success");
+            navigate("/dashboard/sessions");
+        } catch (e) { toast.add("Failed to delete", "error"); }
+    };
+
+    if (loading && !session) return <div style={{ padding: 40, textAlign: "center" }}>Loading session…</div>;
+    if (!session) return <div style={{ padding: 40, textAlign: "center" }}>Session not found</div>;
+
+    const qrVal = session.status === "active" && session.qr_token ? `${window.location.origin}/#/student?token=${session.qr_token}` : null;
+
     return (
         <div>
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
-                <button className="cb-btn-signin" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 4 }}><ChevronLeft size={15} /> Back</button>
-                <div>
-                    <h2 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-.8px" }}>{session.courseName} — Session #{session.id}</h2>
-                    <p style={{ fontSize: 14, color: "var(--gray-500)", marginTop: 2 }}>{session.date} · {session.time} · {session.duration} min</p>
+                <button className="cb-btn-signin" onClick={() => navigate(-1)} style={{ display: "flex", alignItems: "center", gap: 4 }}><ChevronLeft size={15} /> Back</button>
+                <div style={{ flex: 1 }}>
+                    <h2 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-.8px" }}>{session.course_code} — Session #{session.session_number || session.session_id}</h2>
+                    <p style={{ fontSize: 14, color: "var(--gray-500)", marginTop: 2 }}>{new Date(session.start_time).toLocaleDateString("en-GB")} · {new Date(session.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {Math.round((new Date(session.end_time) - new Date(session.start_time)) / 60000)} min</p>
                 </div>
-                <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <span className={`cb-bdg ${session.status === "active" ? "green" : "gray"}`}>{session.status === "active" ? <><span className="cb-bdg-dot" />LIVE</> : "CLOSED"}</span>
-                    <button className="cb-btn-dark" style={{ padding: "8px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }} onClick={() => toast.add("CSV downloaded", "success")}><Download size={14} /> CSV</button>
+                    <button className="cb-btn-signin" style={{ color: "var(--red)" }} onClick={handleDelete}><Trash2 size={16} /></button>
+                    <button className="cb-btn-dark" style={{ padding: "8px 16px", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><Download size={14} /> CSV</button>
                 </div>
             </div>
+
+            {qrVal && (
+                <div
+                    style={{ marginBottom: 32, padding: 24, background: "var(--gray-50)", borderRadius: 16, textAlign: "center", border: "1.5px solid var(--gray-100)", cursor: "zoom-in" }}
+                    onClick={() => onShowQR({ val: qrVal, title: session.course_code })}
+                >
+                    <div style={{ display: "inline-block", background: "white", padding: 16, borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.05)", marginBottom: 12 }}>
+                        <QRCodeSVG value={qrVal} size={200} />
+                    </div>
+                    <div style={{ fontSize: 14, color: "var(--gray-600)", fontWeight: 500 }}>Tap to expand. Students scan to check-in.</div>
+                </div>
+            )}
+
             <div className="cb-tabs">
                 {["attendance", "flagged", "analytics"].map(t => (
                     <button key={t} className={`cb-tab${tab === t ? " active" : ""}`} onClick={() => setTab(t)}>
                         {t.charAt(0).toUpperCase() + t.slice(1)}
-                        {t === "flagged" && session.flagged > 0 && <span style={{ marginLeft: 6, background: "#D97706", color: "white", fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 6px" }}>{session.flagged}</span>}
+                        {t === "flagged" && flags.filter(f => f.status === "pending").length > 0 && <span style={{ marginLeft: 6, background: "#D97706", color: "white", fontSize: 10, fontWeight: 700, borderRadius: 4, padding: "1px 6px" }}>{flags.filter(f => f.status === "pending").length}</span>}
                     </button>
                 ))}
             </div>
-            {tab === "attendance" && <AttendanceTable session={session} />}
-            {tab === "flagged" && <FlaggedView toast={toast} />}
+            {tab === "attendance" && <AttendanceTable rows={attendance} session={session} />}
+            {tab === "flagged" && <FlaggedView toast={toast} items={flags} onUpdate={fetchDetail} />}
             {tab === "analytics" && (
                 <div className="cb-stats">
-                    {[{ lbl: "Total Enrolled", val: session.total, color: "var(--blue)" }, { lbl: "Present", val: session.attended, color: "var(--green)" }, { lbl: "Absent", val: session.total - session.attended, color: "var(--red)" }, { lbl: "Flagged", val: session.flagged, color: "#D97706" }].map(s => (
+                    {[{ lbl: "Total Enrolled", val: session.total_students || attendance.length, color: "var(--blue)" }, { lbl: "Present", val: attendance.filter(a => a.status !== "absent").length, color: "var(--green)" }, { lbl: "Absent", val: attendance.filter(a => a.status === "absent").length, color: "var(--red)" }, { lbl: "Flagged", val: flags.length, color: "#D97706" }].map(s => (
                         <div key={s.lbl} className="cb-stat-card"><div className="cb-stat-lbl">{s.lbl}</div><div className="cb-stat-val" style={{ color: s.color, fontSize: 40 }}>{s.val}</div></div>
                     ))}
                 </div>
@@ -1405,57 +1490,46 @@ function SessionDetail({ session, onBack, toast }) {
     );
 }
 
-/* ── DASHBOARD SIDEBAR (Coinbase Explore sidebar style) ── */
-function DashSidebar({ toast, sessions = [], students = [], onNewSession }) {
-    const s = sessions.find(x => x.status === "active") || sessions[0] || { courseName: "—", attended: 0, total: 0, duration: 0, flagged: 0, id: null };
+function AttendanceTable({ rows, session }) {
+    const [search, setSearch] = useState("");
+    const filtered = rows.filter(s => (s.full_name || "").toLowerCase().includes(search.toLowerCase()) || (s.student_index || "").toString().includes(search));
     return (
-        <div className="cb-dash-sidebar">
-            {/* blue get-started card */}
-            <div className="cb-side-blue">
-                <div className="cb-side-deco"><GraduationCap size={80} strokeWidth={1} /></div>
-                <h3>Quick start</h3>
-                <p>Create a session and show the live QR to start taking attendance.</p>
-                <button className="cb-side-blue-btn" onClick={onNewSession}>+ New Session</button>
-            </div>
-            {/* QR panel */}
-            <QRPanel session={s} onRefresh={() => toast.add("QR refreshed", "success")} />
-            {/* session progress */}
-            <div className="cb-side-card">
-                <div className="cb-side-card-hdr">
-                    <h3>Active Session</h3>
-                    <span className="cb-bdg green" style={{ fontSize: 11 }}><span className="cb-bdg-dot" />LIVE</span>
-                </div>
-                <div className="cb-prog-bar" style={{ marginBottom: 8 }}><div className="cb-prog-fill" style={{ width: `${pct(s.attended_count || s.attended || 0, s.total || 1)}%` }} /></div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--gray-500)", marginBottom: 14 }}><span>{s.attended_count || s.attended || 0} present</span><span>{pct(s.attended_count || s.attended || 0, s.total || 1)}%</span></div>
-                {[["Course", s.course_code || s.courseName || "—"], ["Duration", `${s.duration || 0} min`], ["Present", `${s.attended_count || s.attended || 0}/${s.total || 0}`], ["Flagged", `${s.flagged || 0} submissions`]].map(([k, v]) => (
-                    <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "6px 0", borderBottom: "1px solid var(--gray-100)" }}>
-                        <span style={{ color: "var(--gray-500)" }}>{k}</span>
-                        <span style={{ fontWeight: 500, color: k === "Flagged" && s.flagged > 0 ? "#D97706" : "var(--text)" }}>{v}</span>
+        <div className="cb-tbl-wrap">
+            <div className="cb-tbl-top">
+                <div className="cb-tbl-title">Attendance — {session?.course_code}</div>
+                <div className="cb-tbl-filters">
+                    <div className="cb-search-box">
+                        <Search size={14} />
+                        <input placeholder="Student ID or name…" value={search} onChange={e => setSearch(e.target.value)} />
                     </div>
-                ))}
-            </div>
-            {/* recent check-ins (Coinbase "Top movers" style) */}
-            <div className="cb-side-card">
-                <div className="cb-side-card-hdr"><h3>Recent Check-ins</h3><div className="cb-side-nav"><button>←</button><button>→</button></div></div>
-                <div style={{ fontSize: 12, color: "var(--gray-400)", marginBottom: 12 }}>Today · CS401</div>
-                <div className="cb-mover-grid">
-                    {students.filter(s => !s.flag && !s.flagged).slice(0, 4).map(s => (
-                        <div key={s.id} className="cb-mover-tile">
-                            <div className="cb-mover-icon">{(s.student_name || s.name || "?")[0]}</div>
-                            <div className="cb-mover-ticker">{s.student_id || s.id}</div>
-                            <div className="cb-mover-chg up" style={{ display: "flex", alignItems: "center", gap: 3 }}><Check size={11} /> {s.submitted_at ? new Date(s.submitted_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : s.time || ""}</div>
-                            <div className="cb-mover-price">{(s.student_name || s.name || "").split(" ")[0]}</div>
-                        </div>
-                    ))}
                 </div>
             </div>
+            <table className="cb-tbl">
+                <thead><tr><th>Student ID</th><th>Name</th><th>Check-in</th><th>Status</th></tr></thead>
+                <tbody>
+                    {filtered.length === 0 && (
+                        <tr><td colSpan="4" style={{ textAlign: "center", padding: 40, color: "var(--gray-400)" }}>No attendance records found.</td></tr>
+                    )}
+                    {filtered.map(s => (
+                        <tr key={s.attendance_id} style={{ opacity: s.status === 'absent' ? 0.6 : 1 }}>
+                            <td style={{ fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>{s.student_index}</td>
+                            <td style={{ fontWeight: 600 }}>{s.full_name}</td>
+                            <td style={{ fontVariantNumeric: "tabular-nums" }}>{s.timestamp ? new Date(s.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                            <td>
+                                <span className={`cb-bdg ${s.status === 'valid' ? 'green' : s.status === 'flagged' ? 'yellow' : 'gray'}`}>
+                                    {s.status.toUpperCase()}
+                                </span>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }
 
 function Dashboard({ toast }) {
-    const [tab, setTab] = useState("Dashboard");
-    const [sel, setSel] = useState(null);
+    const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
     const [showCourseModal, setShowCourseModal] = useState(false);
     const [user, setUser] = useState(() => localStorage.getItem("token") ? { token: localStorage.getItem("token") } : null);
@@ -1464,6 +1538,7 @@ function Dashboard({ toast }) {
     const [flags, setFlags] = useState([]);
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [fullQR, setFullQR] = useState(null);
 
     const fetchAll = useCallback(async () => {
         if (!user) return;
@@ -1471,101 +1546,94 @@ function Dashboard({ toast }) {
         try {
             const h = { headers: getAuthHeaders() };
             const [c, s, f] = await Promise.all([
-                axios.get(`${API_BASE}/api/lecturer/courses`, h).catch(() => ({ data: [] })),
-                axios.get(`${API_BASE}/api/lecturer/sessions`, h).catch(() => ({ data: [] })),
-                axios.get(`${API_BASE}/api/lecturer/flags`, h).catch(() => ({ data: [] })),
+                axios.get(`${API_BASE}/api/lecturer/courses`, h).catch(() => ({ data: { courses: [] } })),
+                axios.get(`${API_BASE}/api/lecturer/sessions`, h).catch(() => ({ data: { sessions: [] } })),
+                axios.get(`${API_BASE}/api/lecturer/flags`, h).catch(() => ({ data: { flags: [] } })),
             ]);
             setCourses(c.data?.courses || (Array.isArray(c.data) ? c.data : []));
-            setSessions(s.data?.sessions || s.data?.session ? [s.data.session] : (Array.isArray(s.data) ? s.data : []));
+            setSessions(s.data?.sessions || (Array.isArray(s.data) ? s.data : []));
             setFlags(f.data?.flags || (Array.isArray(f.data) ? f.data : []));
-            // Fetch students from the active session if any
-            const active = (Array.isArray(s.data) ? s.data : []).find(x => x.status === "active");
+            const active = (s.data?.sessions || []).find(x => x.status === "active");
             if (active) {
-                axios.get(`${API_BASE}/api/lecturer/sessions/${active.id}/attendance`, { headers: getAuthHeaders() })
-                    .then(r => setStudents(Array.isArray(r.data) ? r.data : []))
+                axios.get(`${API_BASE}/api/lecturer/sessions/${active.session_id || active.id}/attendance`, { headers: getAuthHeaders() })
+                    .then(r => {
+                        const data = r.data?.attendance || (Array.isArray(r.data) ? r.data : []);
+                        setStudents(data.filter(a => a.status !== 'absent'));
+                    })
                     .catch(() => { });
+            } else {
+                setStudents([]);
             }
         } catch (e) { toast.add("Failed to load data", "error"); }
         finally { setLoading(false); }
-    }, [user]);
+    }, [user, toast]);
 
-    useEffect(() => { fetchAll(); }, [fetchAll]);
+    useEffect(() => {
+        fetchAll();
+        const timer = setInterval(() => {
+            const active = sessions.find(x => x.status === "active");
+            if (active) {
+                axios.post(`${API_BASE}/api/lecturer/sessions/${active.session_id || active.id}/refresh-qr`, {}, { headers: getAuthHeaders() })
+                    .then(r => {
+                        setSessions(prev => prev.map(s => (s.session_id === active.session_id || s.id === active.id) ? { ...s, qr_token: r.data.qr_token, qr_expiry: r.data.qr_expires_at } : s));
+                    }).catch(() => { });
+            }
+        }, 30000);
+        return () => clearInterval(timer);
+    }, [fetchAll, sessions.length]);
 
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        try {
-            const r = await axios.post(`${API_BASE}/api/lecturer/login`, { email: e.target.email.value, password: e.target.password.value });
-            localStorage.setItem("token", r.data.token);
-            setUser({ token: r.data.token });
-        } catch (e) { toast.add(e?.response?.data?.error || "Invalid credentials", "error"); }
-    };
+    if (!user) return <Navigate to="/login" />;
 
-    if (!user) {
-        return (
-            <div className="cb-submit-page">
-                <div className="cb-submit-card">
-                    <div className="cb-submit-logo">
-                        <div><img src="/logo.png" style={{ height: 52, width: 52, objectFit: "contain" }} /></div>
-                        <div className="cb-submit-title">Lecturer Sign In</div>
-                        <div className="cb-submit-sub">Sign in to access your dashboard</div>
-                    </div>
-                    <form onSubmit={handleLogin}>
-                        <div className="cb-form-row"><label className="cb-form-lbl">Email</label><input className="cb-form-input" name="email" type="email" required placeholder="you@university.edu" /></div>
-                        <div className="cb-form-row"><label className="cb-form-lbl">Password</label><input className="cb-form-input" name="password" type="password" required placeholder="••••••••" /></div>
-                        <button className="cb-btn-signup" style={{ width: "100%", padding: 14, fontSize: 15, borderRadius: 100 }} type="submit">Sign In</button>
-                    </form>
-                </div>
-            </div>
-        );
-    }
-
-    const now = new Date();
-    const dateStr = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-    const timeStr = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const showSidebar = tab === "Dashboard" && !sel;
-    const renderMain = () => {
-        if (sel) return <SessionDetail session={sel} onBack={() => setSel(null)} toast={toast} />;
-        if (tab === "Dashboard") return (
-            <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}>
-                    <div><h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.8px" }}>Dashboard</h2><p style={{ fontSize: 14, color: "var(--gray-500)", marginTop: 4 }}>{dateStr} · {timeStr}</p></div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                        <button className="cb-btn-signin" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => toast.add("No data to export yet", "warn")}><Download size={14} /> Report</button>
-                        <button className="cb-btn-signup" style={{ padding: "10px 22px" }} onClick={() => setShowModal(true)}>+ New Session</button>
-                    </div>
-                </div>
-                <StatsRow sessions={sessions} courses={courses} flags={flags} />
-                <SessionsTable onView={setSel} onNew={() => setShowModal(true)} toast={toast} sessions={sessions} courses={courses} />
-            </div>
-        );
-        if (tab === "Sessions") return <div><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 28 }}><h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.8px" }}>Sessions</h2><button className="cb-btn-signup" style={{ padding: "10px 22px" }} onClick={() => setShowModal(true)}>+ New Session</button></div><SessionsTable onView={setSel} onNew={() => setShowModal(true)} toast={toast} sessions={sessions} courses={courses} /></div>;
-        if (tab === "Courses") return <CoursesView toast={toast} courses={courses} onAdd={() => setShowCourseModal(true)} />;
-        if (tab === "Flagged") return <FlaggedView toast={toast} />;
-        if (tab === "Students") return <div><h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.8px", marginBottom: 24 }}>Students</h2><AttendanceTable session={sessions.find(s => s.status === "active") || sessions[0] || null} /></div>;
-    };
     return (
-        <div>
-            <DashNav tab={sel ? "Dashboard" : tab} setTab={t => { setTab(t); setSel(null); }} setPage={() => { }} onLogout={() => { localStorage.removeItem("token"); setUser(null); }} />
-            <div className="cb-dash-page">
-                <div className="cb-dash-main">{renderMain()}</div>
-                {showSidebar && <DashSidebar toast={toast} sessions={sessions} students={students} onNewSession={() => setShowModal(true)} />}
+        <div style={{ background: "var(--gray-50)", minHeight: "100vh" }}>
+            <DashNav onLogout={() => { localStorage.removeItem("token"); setUser(null); navigate("/login"); }} />
+            <div className="cb-dash-page" style={{ padding: "32px 20px" }}>
+                <div className="cb-dash-main" style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
+                    <Routes>
+                        <Route path="/" element={
+                            <>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+                                    <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-1.2px" }}>Dashboard</h2>
+                                    <button className="cb-btn-signup" onClick={() => setShowModal(true)}>+ New Session</button>
+                                </div>
+                                <StatsRow sessions={sessions} courses={courses} flags={flags} />
+                                <SessionsTable onView={s => navigate(`/dashboard/sessions/${s.session_id}`)} sessions={sessions} toast={toast} />
+                            </>
+                        } />
+                        <Route path="sessions" element={
+                            <>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
+                                    <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-1.2px", color: "var(--text)" }}>Sessions</h2>
+                                    <button className="cb-btn-signup" onClick={() => setShowModal(true)}>+ New Session</button>
+                                </div>
+                                <SessionsTable onView={s => navigate(`/dashboard/sessions/${s.session_id}`)} sessions={sessions} toast={toast} />
+                            </>
+                        } />
+                        <Route path="sessions/:id" element={<SessionDetail toast={toast} onShowQR={setFullQR} />} />
+                        <Route path="courses" element={<CoursesView toast={toast} courses={courses} onAdd={() => setShowCourseModal(true)} />} />
+                        <Route path="flags" element={<FlaggedView toast={toast} items={flags} onUpdate={fetchAll} />} />
+                    </Routes>
+                </div>
             </div>
             {showModal && <NewSessionModal onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); fetchAll(); }} toast={toast} courses={courses} />}
             {showCourseModal && <NewCourseModal onClose={() => setShowCourseModal(false)} onSave={() => { setShowCourseModal(false); fetchAll(); }} toast={toast} />}
+            {fullQR && <FullscreenQR val={fullQR.val} title={fullQR.title} onClose={() => setFullQR(null)} />}
         </div>
     );
 }
 
 /* ────────── STUDENT SUBMIT ────────── */
-function StudentPage({ setPage }) {
+function StudentPage() {
+    const { search } = useLocation(); // for token
+    const token = new URLSearchParams(search).get("token");
     const [step, setStep] = useState("loading");
     const [sessionData, setSessionData] = useState(null);
     const [form, setForm] = useState({ sid: "", name: "", error: "" });
     const [loading, setLoading] = useState(false);
     const [geo, setGeo] = useState({ lat: null, lon: null, acc: null, status: "acquiring" });
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const token = new URLSearchParams(window.location.search).get("token");
         if (!token) {
             setForm(f => ({ ...f, error: "No session token provided in URL." }));
             setStep("error");
@@ -1588,22 +1656,27 @@ function StudentPage({ setPage }) {
                 setForm(f => ({ ...f, error: err?.response?.data?.error || "Invalid or expired session link." }));
                 setStep("error");
             });
-    }, []);
+    }, [token]);
 
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
     const submit = async () => {
         if (!form.sid || !form.name || !sessionData) return;
         setLoading(true);
         try {
-            const token = new URLSearchParams(window.location.search).get("token");
             const payload = {
-                studentId: form.sid,
-                studentName: form.name,
-                courseCode: sessionData.course_code,
+                student_id: form.sid,
+                student_name: form.name,
+                course_code: sessionData.course_code,
                 latitude: geo.lat || 0,
                 longitude: geo.lon || 0,
                 accuracy: geo.acc || 999,
-                token: token
+                qr_token: token,
+                device: {
+                    platform: navigator.platform,
+                    screen: `${window.screen.width}x${window.screen.height}`,
+                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    language: navigator.language
+                }
             };
             await axios.post(`${API_BASE}/api/student/submit`, payload);
             setStep("success");
@@ -1634,7 +1707,7 @@ function StudentPage({ setPage }) {
                         <div style={{ background: "#FEF2F2", color: "var(--red)", border: "1.5px solid rgba(207,48,74,.2)", borderRadius: 10, padding: "16px", fontSize: 14, marginBottom: 20 }}>
                             {form.error}
                         </div>
-                        <button onClick={() => setPage("home")} className="cb-btn-signin" style={{ width: "100%", padding: 12 }}>Back to Home</button>
+                        <button onClick={() => navigate("/")} className="cb-btn-signin" style={{ width: "100%", padding: 12 }}>Back to Home</button>
                     </div>
                 )}
 
@@ -1684,8 +1757,6 @@ function StudentPage({ setPage }) {
         </div>
     );
 }
-
-/* ────────── ROOT ────────── */
 
 /* ────────── AUTH PAGE (Login/Signup) ────────── */
 function AuthPage({ initialMode = "login", onAuth, toast }) {
@@ -1767,7 +1838,7 @@ function AuthPage({ initialMode = "login", onAuth, toast }) {
 }
 
 /* ────────── DOCS PAGE ────────── */
-function DocsPage({ setPage }) {
+function DocsPage() {
     const [activeSection, setActiveSection] = useState("quickstart");
 
     const sections = [
@@ -1851,11 +1922,11 @@ function DocsPage({ setPage }) {
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
             <nav className="cb-nav" style={{ borderBottom: "1px solid var(--gray-100)" }}>
                 <div className="cb-nav-inner" style={{ justifyContent: "space-between" }}>
-                    <div className="cb-logo" onClick={() => setPage("home")}>
+                    <Link to="/" className="cb-logo">
                         <img src="/logo.png" style={{ height: 32, width: 32, objectFit: "contain" }} />
                         <span className="cb-logo-text">Acadience</span>
-                    </div>
-                    <button className="cb-nav-btn" onClick={() => setPage("home")}>Back to Home</button>
+                    </Link>
+                    <Link to="/" className="cb-nav-btn">Back to Home</Link>
                 </div>
             </nav>
 
@@ -1890,51 +1961,22 @@ function DocsPage({ setPage }) {
 }
 
 export default function App() {
-    const [page, setPage] = useState(() => {
-        const p = window.location.pathname.replace("/", "");
-        if (["login", "signup", "dashboard", "student", "docs"].includes(p)) return p;
-        return "home";
-    });
     const toast = useToast();
-
-    const navigate = (p) => {
-        window.history.pushState({}, "", "/" + (p === "home" ? "" : p));
-        setPage(p);
-        window.scrollTo(0, 0);
-    };
-
-    useEffect(() => {
-        const handlePop = () => {
-            const p = window.location.pathname.replace("/", "");
-            setPage(["login", "signup", "dashboard", "student", "docs"].includes(p) ? p : "home");
-        };
-        window.addEventListener("popstate", handlePop);
-        return () => window.removeEventListener("popstate", handlePop);
-    }, []);
-
-    const isAuth = !!localStorage.getItem("token");
-
     return (
         <>
             <style>{CSS}</style>
-            {page === "home" && (
-                <>
-                    <Nav setPage={navigate} toast={toast} />
-                    <HomePage setPage={navigate} toast={toast} />
-                </>
-            )}
-            {(page === "login" || page === "signup") && (
-                <AuthPage
-                    initialMode={page}
-                    onAuth={() => navigate("dashboard")}
-                    toast={toast}
-                />
-            )}
-            {page === "dashboard" && (
-                isAuth ? <Dashboard toast={toast} /> : <AuthPage initialMode="login" onAuth={() => navigate("dashboard")} toast={toast} />
-            )}
-            {page === "student" && <StudentPage setPage={navigate} />}
-            {page === "docs" && <DocsPage setPage={navigate} />}
+            <Routes>
+                <Route path="/" element={<><Nav /><HomePage toast={toast} /></>} />
+                <Route path="/login" element={<AuthPage initialMode="login" toast={toast} onAuth={() => window.location.hash = "/dashboard"} />} />
+                <Route path="/signup" element={<AuthPage initialMode="signup" toast={toast} onAuth={() => window.location.hash = "/dashboard"} />} />
+                <Route path="/dashboard/*" element={<Dashboard toast={toast} />} />
+                <Route path="/sessions/*" element={<Navigate to="/dashboard/sessions" replace />} />
+                <Route path="/courses/*" element={<Navigate to="/dashboard/courses" replace />} />
+                <Route path="/flags/*" element={<Navigate to="/dashboard/flags" replace />} />
+                <Route path="/student" element={<StudentPage />} />
+                <Route path="/docs" element={<DocsPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
             <Toasts ts={toast.ts} />
         </>
     );

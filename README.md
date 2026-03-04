@@ -2,7 +2,7 @@
 
 Serverless attendance system on Cloudflare (Workers + D1 + Pages).
 
-## 🚀 Live Deployment
+##  Live Deployment
 
 - **Frontend**: https://6e4536fe.acadience.pages.dev
 - **API**: https://acadience-attendance-api.sedegahkimathi.workers.dev

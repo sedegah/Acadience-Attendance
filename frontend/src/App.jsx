@@ -4,7 +4,6 @@ import axios from "axios";
 import { QRCodeSVG } from "qrcode.react";
 
 const API_BASE = "https://acadience-attendance-api.sedegahkimathi.workers.dev";
-const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 import {
     Wifi, MapPin, Lock, AlertTriangle, BarChart2, Cloud,
     FolderOpen, Calendar, Users, Download, Shield, Bell,
@@ -14,462 +13,142 @@ import {
     ChevronDown, User, RefreshCw, QrCode, LogOut,
     LayoutDashboard, BookOpen, AlertCircle, TrendingUp,
     TrendingDown, Activity, ArrowRight, Plus, Filter,
-    CheckCircle2, XCircle, Scan
+    CheckCircle2, XCircle, Scan, Trash2, Download as DownloadIcon
 } from "lucide-react";
 
+const getAuthHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
+const fmt = n => n < 10 ? "0" + n : "" + n;
+const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --blue:#0052FF;--blue-hover:#0039B3;--black:#050F19;--white:#FFFFFF;
-  --gray-50:#F5F5F5;--gray-100:#EBEBEB;--gray-200:#D8D8D8;
-  --gray-400:#9B9B9B;--gray-500:#6B7280;--gray-600:#5B616E;
-  --green:#05B169;--red:#CF304A;--text:#050F19;
+:root {
+  --blue: #0052FF;
+  --blue-h: #0040E5;
+  --bg: #FFFFFF;
+  --t1: #0A0B0D;
+  --t2: #5B616E;
+  --t3: #89909E;
+  --border: #ECEFF1;
+  --gray-50: #F9FAFB;
+  --gray-100: #F4F7F9;
+  --green: #09853A;
+  --red: #CF304A;
+  --shadow: 0 4px 12px rgba(0,0,0,0.05);
+  --radius: 8px;
 }
-html{scroll-behavior:smooth}
-body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:var(--text);-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.5;overflow-x:hidden}
-button{font-family:inherit;cursor:pointer}
-input,select,textarea{font-family:inherit}
-a{text-decoration:none;color:inherit}
 
-/* ── NAV (exact Coinbase) ── */
-.cb-nav{
-  position:sticky;top:0;z-index:300;
-  background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--gray-100);
-  height:64px;display:flex;align-items:center;padding:0 32px;
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { 
+  font-family: 'Inter', -apple-system, sans-serif; 
+  background-color: var(--bg); 
+  color: var(--t1);
+  -webkit-font-smoothing: antialiased;
 }
-.cb-nav-inner{max-width:1440px;width:100%;margin:0 auto;display:flex;align-items:center;position:relative}
-.cb-logo{display:flex;align-items:center;gap:10px;margin-right:32px;cursor:pointer;user-select:none;text-decoration:none}
-.cb-logo-icon{width:38px;height:38px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;flex-shrink:0}
-.cb-logo-text{font-size:18px;font-weight:600;color:var(--text);letter-spacing:-0.5px}
-.cb-nav-links{display:flex;align-items:center;list-style:none;gap:0;flex:1}
-.cb-nav-item{position:relative}
-.cb-nav-btn{display:flex;align-items:center;gap:4px;padding:10px 18px;font-size:15px;font-weight:500;color:var(--text);background:transparent;border:none;border-radius:999px;cursor:pointer;transition:background .12s;white-space:nowrap}
-.cb-nav-btn:hover,.cb-nav-btn.open{background:var(--gray-50)}
-.cb-nav-actions{display:flex;align-items:center;gap:8px;margin-left:auto}
-.cb-icon-btn{width:38px;height:38px;border-radius:50%;border:1.5px solid var(--gray-200);background:white;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--gray-600);transition:background .12s}
-.cb-icon-btn:hover{background:var(--gray-50)}
-.cb-btn-signin{padding:9px 20px;font-size:15px;font-weight:600;color:var(--text);background:var(--gray-50);border:none;border-radius:100px;cursor:pointer;transition:background .12s}
-.cb-btn-signin:hover{background:var(--gray-100)}
-.cb-btn-signup{padding:9px 20px;font-size:15px;font-weight:600;color:#fff;background:var(--blue);border:none;border-radius:100px;cursor:pointer;transition:background .12s}
-.cb-btn-signup:hover{background:var(--blue-hover)}
 
-/* ── MEGA MENU (exact Coinbase) ── */
-.cb-mega{
-  position:absolute;top:calc(100% + 8px);left:0;
-  background:white;border:1px solid var(--gray-100);border-radius:16px;
-  box-shadow:0 20px 60px rgba(0,0,0,.12);
-  padding:28px 32px;min-width:860px;
-  display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;
-  z-index:400;animation:megaIn .15s ease;
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input, select { font-family: inherit; }
+
+/* CDS Navigation */
+.cb-nav {
+  height: 64px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-@keyframes megaIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
-.cb-mega-col{display:flex;flex-direction:column;gap:4px;padding-right:24px}
-.cb-mega-col:last-child{padding-right:0}
-.cb-mega-section-title{font-size:12px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.6px;padding:4px 10px 8px;margin-top:4px}
-.cb-mega-item{display:flex;align-items:flex-start;gap:16px;padding:12px 14px;border-radius:12px;text-decoration:none;color:var(--text);transition:background .1s;cursor:pointer}
-.cb-mega-item:hover{background:var(--gray-50)}
-.cb-mega-icon{width:36px;height:36px;border-radius:10px;background:var(--gray-50);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
-.cb-mega-title{font-size:14px;font-weight:600;color:var(--text)}
-.cb-mega-desc{font-size:13px;color:var(--gray-500);margin-top:1px;line-height:1.4}
-.cb-mega-promo-col{display:flex;flex-direction:column;gap:12px;padding-left:24px;border-left:1px solid var(--gray-100)}
-.cb-mega-promo-card{width:100px;height:100px;border-radius:16px;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:40px;flex-shrink:0}
-.cb-mega-promo-title{font-size:20px;font-weight:400;color:#111;margin-bottom:6px;line-height:1.2}
-.cb-mega-promo-desc{font-size:16px;color:var(--gray-500);margin-bottom:12px;line-height:1.3}
-.cb-mega-promo-link{font-size:14px;font-weight:700;color:var(--text);text-decoration:underline;text-underline-offset:3px}
-.cb-mega-promo-inner{display:flex;gap:16px;align-items:flex-start}
-
-/* ── HERO ── */
-.cb-hero{
-  max-width:1440px;margin:0 auto;
-  padding:60px 80px 80px;
-  display:grid;grid-template-columns:1fr 1fr;
-  align-items:center;gap:60px;
-  min-height:calc(100vh - 64px);
+.cb-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 }
-.cb-hero-title{font-size:clamp(44px,5.5vw,72px);font-weight:400;line-height:1.06;letter-spacing:-3px;color:var(--text);margin-bottom:20px}
-.cb-hero-sub{font-size:17px;color:var(--gray-500);margin-bottom:32px;line-height:1.6;max-width:440px}
-.cb-hero-form{display:flex;gap:8px;max-width:460px}
-.cb-hero-form input{flex:1;padding:14px 18px;font-size:15px;border:1.5px solid var(--gray-200);border-radius:100px;outline:none;color:var(--text)}
-.cb-hero-form input::placeholder{color:var(--gray-400)}
-.cb-hero-form input:focus{border-color:var(--blue)}
-.cb-hero-form-btn{padding:14px 28px;font-size:15px;font-weight:700;background:var(--blue);color:#fff;border:none;border-radius:100px;cursor:pointer}
-.cb-hero-form-btn:hover{background:var(--blue-hover)}
-.cb-hero-disclaimer{font-size:12px;color:var(--gray-400);margin-top:14px}
-
-/* Phone card on right side of hero */
-.cb-phone-bg{
-  background:linear-gradient(155deg,#1A49D4 0%,#0A1855 55%,#050F35 100%);
-  border-radius:28px;width:100%;max-width:600px;
-  padding:40px 60px 50px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  position:relative;min-height:440px;
+.cb-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  font-weight: 700;
+  color: var(--blue);
+  font-size: 20px;
 }
-.cb-phone-mockup{background:white;border-radius:24px;width:240px;box-shadow:0 32px 80px rgba(0,0,0,.45);overflow:hidden;display:flex;flex-direction:column}
-.cb-phone-topbar{height:36px;background:#fafafa;border-bottom:1px solid #eee;display:flex;align-items:center;padding:0 8px;gap:5px}
-.cb-phone-search{flex:1;height:24px;background:#f0f0f0;border-radius:8px;display:flex;align-items:center;padding:0 8px;gap:4px;font-size:10px;color:#888}
-.cb-phone-body{padding:12px 12px 10px}
-.cb-phone-bal{font-size:21px;font-weight:700;letter-spacing:-0.5px}
-.cb-phone-chg{font-size:11px;color:var(--green);font-weight:500;margin:2px 0 10px}
-.cb-phone-chart{height:80px;margin-bottom:10px}
-.cb-phone-chart svg{width:100%;height:100%}
-.cb-phone-tabs{display:flex;gap:3px;margin-bottom:8px}
-.cb-phone-tab{font-size:10px;font-weight:500;padding:3px 6px;border-radius:5px;color:#888;border:none;background:transparent;cursor:pointer}
-.cb-phone-tab.active{background:var(--blue);color:white;font-weight:600}
-.cb-phone-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5}
-.cb-phone-row:last-child{border:none}
-.cb-phone-row-icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
-.cb-phone-row-name{font-size:12px;font-weight:600}
-.cb-phone-row-val{font-size:12px;font-weight:600}
-.cb-phone-row-val.up{color:var(--green)}
-
-/* ── SHARED LAYOUT ── */
-.cb-sec-gray{background:#F2F2F2;padding:80px}
-.cb-sec-white{background:#fff}
-.cb-inner{max-width:1440px;margin:0 auto}
-.cb-two-col{max-width:1440px;margin:0 auto;padding:80px;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center}
-.cb-h2{font-size:clamp(28px,3.2vw,48px);font-weight:600;letter-spacing:-1.5px;line-height:1.1;margin-bottom:14px;color:var(--text)}
-.cb-p{font-size:16px;color:var(--gray-500);line-height:1.7;margin-bottom:28px}
-.cb-btn-dark{display:inline-block;padding:13px 24px;font-size:15px;font-weight:700;background:var(--text);color:white;border:none;border-radius:100px;text-decoration:none;cursor:pointer;transition:opacity .12s}
-.cb-btn-dark:hover{opacity:.82}
-
-/* ── DARK ASSET TABLE (exact Coinbase) ── */
-.cb-asset-table{background:#0b0c0e;border-radius:36px;overflow:hidden;padding:21px 21px 8px}
-.cb-asset-tabs{display:flex;justify-content:center;gap:18px;padding:5px 0 15px}
-.cb-asset-tab{font-size:12px;font-weight:600;color:rgba(255,255,255,.9);padding:8px 15px;border-radius:999px;cursor:pointer;border:none;background:transparent;transition:background .12s}
-.cb-asset-tab:hover{background:rgba(255,255,255,.06)}
-.cb-asset-tab.active{background:rgba(255,255,255,.12);color:white}
-.cb-asset-row{display:flex;align-items:center;justify-content:space-between;padding:15px 15px;border-top:1px solid rgba(255,255,255,.06);cursor:pointer;transition:background .1s}
-.cb-asset-row:hover{background:rgba(255,255,255,.04)}
-.cb-asset-left{display:flex;align-items:center;gap:14px}
-.cb-asset-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.cb-asset-name{font-size:30px;font-weight:400;color:white;letter-spacing:-0.5px}
-.cb-asset-price{font-size:21px;font-weight:700;color:white;letter-spacing:-0.4px}
-.cb-asset-chg{font-size:15px;font-weight:600}
-.cb-asset-chg.up{color:var(--green)}
-.cb-asset-chg.dn{color:var(--red)}
-
-/* ── COINBASE ONE STYLE BADGE ── */
-.cb-badge-pill{display:inline-flex;align-items:center;gap:8px;background:white;border:1.5px solid var(--gray-200);border-radius:100px;padding:6px 14px;font-size:13px;font-weight:600;color:var(--text);margin-bottom:20px;letter-spacing:.2px}
-.cb-badge-dot{width:20px;height:20px;background:var(--blue);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:white}
-
-/* Feature phone (Coinbase One / Base App style) */
-.cb-feat-wrap{background:#F2F2F2;border-radius:28px;display:flex;align-items:center;justify-content:center;padding:30px;aspect-ratio:1}
-.cb-feat-phone{background:white;border-radius:30px;box-shadow:0 24px 60px rgba(0,0,0,.1);width:68%;aspect-ratio:9/16;overflow:hidden;display:flex;flex-direction:column;padding:18px 16px 16px;gap:10px}
-.cb-feat-phone-status{display:flex;justify-content:space-between;font-size:10px;color:#888}
-
-/* QR on dark bg */
-.cb-qr-dark{background:#0b0c0e;border-radius:36px;padding:32px;display:flex;flex-direction:column;align-items:center;gap:16px}
-.cb-qr-canvas{width:180px;height:180px;background:white;border-radius:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 8px rgba(255,255,255,.06)}
-.cb-qr-grid{display:grid;grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(12,1fr);gap:2px;width:150px;height:150px}
-.cb-qr-cell{border-radius:1.5px}
-.cb-qr-label{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px;text-align:center}
-.cb-qr-timer{font-size:28px;font-weight:700;letter-spacing:3px;font-variant-numeric:tabular-nums;text-align:center}
-.cb-qr-timer.ok{color:white}
-.cb-qr-timer.warn{color:#FBBF24}
-.cb-qr-timer.danger{color:#F87171;animation:qrblink 1s step-start infinite}
-@keyframes qrblink{50%{opacity:.4}}
-.cb-qr-bar{width:100%;height:4px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden}
-.cb-qr-bar-fill{height:100%;border-radius:99px;transition:width 1s linear,background .3s}
-.cb-qr-course{font-size:12px;color:rgba(255,255,255,.4)}
-.cb-qr-refresh{padding:9px 22px;font-size:13px;font-weight:600;background:rgba(255,255,255,.08);color:rgba(255,255,255,.85);border:1.5px solid rgba(255,255,255,.12);border-radius:100px;cursor:pointer;transition:background .15s}
-.cb-qr-refresh:hover{background:rgba(255,255,255,.14)}
-
-/* ── ARTICLES (exact Coinbase) ── */
-.cb-articles{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.cb-article{background:white;border-radius:16px;overflow:hidden;color:var(--text);transition:transform .2s,box-shadow .2s;display:block;cursor:pointer;border:1px solid var(--gray-100)}
-.cb-article:hover{transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.1)}
-.cb-article-img{height:200px;display:flex;align-items:center;justify-content:center;font-size:52px}
-.cb-article-body{padding:24px}
-.cb-article-body h3{font-size:19px;font-weight:700;letter-spacing:-.5px;margin-bottom:10px;line-height:1.3}
-.cb-article-body p{font-size:14px;color:var(--gray-500);line-height:1.6}
-
-/* ── CTA SECTION (exact Coinbase) ── */
-.cb-cta-section{max-width:1440px;margin:0 auto;padding:80px;display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center}
-.cb-cta-h2{font-size:clamp(36px,4.5vw,68px);font-weight:500;letter-spacing:-2.5px;line-height:1.08;margin-bottom:14px}
-.cb-cta-p{font-size:17px;color:var(--gray-500);margin-bottom:32px}
-.cb-cta-form{display:flex;gap:8px;max-width:460px}
-.cb-cta-form input{flex:1;padding:14px 18px;font-size:15px;border:1.5px solid var(--gray-200);border-radius:100px;outline:none;color:var(--text)}
-.cb-cta-form input:focus{border-color:var(--blue)}
-.cb-cta-form input::placeholder{color:var(--gray-400)}
-.cb-cta-btn{padding:14px 28px;font-size:15px;font-weight:700;background:var(--blue);color:white;border:none;border-radius:100px;cursor:pointer}
-.cb-cta-btn:hover{background:var(--blue-hover)}
-.cb-circles{position:relative;width:380px;height:380px}
-.cb-cc{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;box-shadow:0 8px 24px rgba(0,0,0,.12)}
-
-/* ── FOOTER (exact Coinbase) ── */
-.cb-footer{background:#F2F2F2;padding:60px 80px 40px;border-top:1px solid var(--gray-200)}
-.cb-footer-grid{display:grid;grid-template-columns:160px 1fr 1fr 1fr 1fr;gap:24px;max-width:1440px;margin:0 auto}
-.cb-footer-col h4{font-size:14px;font-weight:700;color:var(--text);margin-bottom:14px}
-.cb-footer-col ul{list-style:none;display:flex;flex-direction:column;gap:10px}
-.cb-footer-col a{font-size:14px;color:var(--gray-500);text-decoration:none;line-height:1.4;transition:color .12s}
-.cb-footer-col a:hover{color:var(--text)}
-.cb-footer-bottom{display:flex;align-items:center;justify-content:space-between;padding-top:28px;margin-top:48px;border-top:1px solid var(--gray-200);flex-wrap:wrap;gap:16px;max-width:1440px;margin-left:auto;margin-right:auto}
-.cb-footer-bottom-left{font-size:14px;color:var(--gray-500)}
-.cb-footer-bottom-links{display:flex;gap:24px}
-.cb-footer-bottom-links a{font-size:14px;color:var(--gray-500);text-decoration:none}
-.cb-footer-bottom-links a:hover{color:var(--text)}
-
-/* ── DASHBOARD / INTERNAL ── */
-.cb-dash-page{max-width:1440px;margin:0 auto;padding:40px 32px}
-.cb-dash-main{width:100%}
-
-/* Stats cards */
-.cb-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
-.cb-stat-card{background:white;border:1.5px solid var(--gray-100);border-radius:16px;padding:22px 20px 18px;transition:box-shadow .2s,transform .2s}
-.cb-stat-card:hover{box-shadow:0 8px 24px rgba(0,0,0,.07);transform:translateY(-2px)}
-.cb-stat-lbl{font-size:13px;color:var(--gray-500);margin-bottom:8px}
-.cb-stat-val{font-size:30px;font-weight:800;letter-spacing:-1.5px;color:var(--text);line-height:1;margin-bottom:6px}
-.cb-stat-sub{font-size:13px;font-weight:500}
-.cb-stat-sub.up{color:var(--green)}
-.cb-stat-sub.dn{color:var(--red)}
-.cb-stat-sub.neu{color:var(--gray-500)}
-.cb-stat-bar{height:4px;background:var(--gray-100);border-radius:99px;overflow:hidden;margin-top:12px}
-.cb-stat-bar-fill{height:100%;border-radius:99px}
-
-/* Table wrapper */
-.cb-tbl-wrap{border:1.5px solid var(--gray-100);border-radius:16px;overflow:hidden;margin-bottom:28px;background:white}
-.cb-tbl-top{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1.5px solid var(--gray-100);flex-wrap:wrap;gap:12px}
-.cb-tbl-title{font-size:17px;font-weight:700;color:var(--text)}
-.cb-tbl-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.cb-filter-pill{padding:7px 16px;font-size:13px;font-weight:500;border:1.5px solid var(--gray-200);border-radius:100px;background:white;cursor:pointer;color:var(--text);transition:all .12s}
-.cb-filter-pill:hover,.cb-filter-pill.active{border-color:var(--blue);color:var(--blue);background:rgba(0,82,255,.04)}
-.cb-search-box{display:flex;align-items:center;gap:8px;background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:100px;padding:7px 16px}
-.cb-search-box input{background:transparent;border:none;outline:none;font-size:14px;color:var(--text);width:160px}
-.cb-search-box input::placeholder{color:var(--gray-400)}
-table.cb-tbl{width:100%;border-collapse:collapse}
-table.cb-tbl th{padding:12px 20px;font-size:13px;font-weight:600;color:var(--gray-500);text-align:left;white-space:nowrap;border-bottom:1.5px solid var(--gray-100)}
-table.cb-tbl th.r{text-align:right}
-table.cb-tbl th.c{text-align:center}
-table.cb-tbl td{padding:14px 20px;font-size:14px;color:var(--gray-600);border-bottom:1px solid var(--gray-100);vertical-align:middle}
-table.cb-tbl td.r{text-align:right}
-table.cb-tbl td.c{text-align:center}
-table.cb-tbl tr:last-child td{border-bottom:none}
-table.cb-tbl tbody tr{cursor:pointer;transition:background .1s}
-table.cb-tbl tbody tr:hover{background:var(--gray-50)}
-
-/* trade btn */
-.cb-trade-btn{padding:8px 20px;font-size:13px;font-weight:700;background:var(--blue);color:white;border:none;border-radius:100px;cursor:pointer;transition:background .12s}
-.cb-trade-btn:hover{background:var(--blue-hover)}
-
-/* badges */
-.cb-bdg{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap}
-.cb-bdg.green{background:rgba(5,177,105,.1);color:var(--green)}
-.cb-bdg.red{background:rgba(207,48,74,.1);color:var(--red)}
-.cb-bdg.blue{background:rgba(0,82,255,.08);color:var(--blue)}
-.cb-bdg.yellow{background:rgba(234,179,8,.1);color:#b45309}
-.cb-bdg.gray{background:var(--gray-100);color:var(--gray-500)}
-.cb-bdg-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
-
-/* sidebar blue card (Coinbase "get started") */
-.cb-side-blue{background:var(--blue);border-radius:16px;padding:22px;color:white;position:relative;overflow:hidden}
-.cb-side-blue h3{font-size:18px;font-weight:600;margin-bottom:6px}
-.cb-side-blue p{font-size:13px;opacity:.8;margin-bottom:16px}
-.cb-side-blue-btn{padding:10px 22px;background:white;color:var(--blue);border-radius:100px;font-size:14px;font-weight:700;border:none;cursor:pointer}
-.cb-side-deco{position:absolute;right:-10px;top:-10px;font-size:80px;opacity:.15;pointer-events:none}
-
-/* sidebar movers / newon cards (exact Coinbase) */
-.cb-side-card{background:white;border:1px solid var(--gray-100);border-radius:16px;padding:20px}
-.cb-side-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-.cb-side-card-hdr h3{font-size:17px;font-weight:700}
-.cb-side-nav{display:flex;gap:4px}
-.cb-side-nav button{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--gray-200);background:white;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
-.cb-side-nav button:hover{background:var(--gray-50)}
-.cb-mover-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.cb-mover-tile{border:1.5px solid var(--gray-100);border-radius:12px;padding:14px 12px;display:flex;flex-direction:column;gap:8px;cursor:pointer}
-.cb-mover-tile:hover{border-color:var(--gray-200)}
-.cb-mover-icon{width:36px;height:36px;border-radius:50%;background:var(--gray-50);display:flex;align-items:center;justify-content:center;font-size:18px}
-.cb-mover-ticker{font-size:12px;color:var(--gray-500);font-weight:500}
-.cb-mover-chg{font-size:16px;font-weight:700}
-.cb-mover-chg.up{color:var(--green)}
-.cb-mover-chg.dn{color:var(--red)}
-.cb-mover-price{font-size:12px;color:var(--gray-500)}
-
-/* attend rows in sidebar */
-.cb-attend-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-100)}
-.cb-attend-row:last-child{border:none}
-.cb-attend-av{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#0052FF,#6366F1);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0}
-.cb-attend-name{font-size:14px;font-weight:600;color:var(--text);flex:1}
-.cb-attend-time{font-size:12px;color:var(--gray-400)}
-
-/* progress bar in sidebar */
-.cb-prog-bar{height:6px;background:var(--gray-100);border-radius:99px;overflow:hidden}
-.cb-prog-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--blue),#6366F1);transition:width .4s}
-
-/* ── MODAL ── */
-.cb-modal-bg{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;animation:mfade .15s ease}
-@keyframes mfade{from{opacity:0}to{opacity:1}}
-.cb-modal{background:white;border-radius:20px;width:520px;max-width:calc(100vw - 32px);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.18);animation:mslide .2s cubic-bezier(.34,1.56,.64,1)}
-@keyframes mslide{from{transform:translateY(14px) scale(.97);opacity:0}to{transform:none;opacity:1}}
-.cb-modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:22px 24px 18px;border-bottom:1px solid var(--gray-100)}
-.cb-modal-hdr-title{font-size:18px;font-weight:600;letter-spacing:-.4px;color:var(--text)}
-.cb-modal-close{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--gray-200);background:white;font-size:16px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.cb-modal-close:hover{background:var(--gray-50)}
-.cb-modal-body{padding:24px}
-.cb-form-row{margin-bottom:18px}
-.cb-form-lbl{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:7px}
-.cb-form-input{width:100%;padding:12px 16px;font-size:14px;border:1.5px solid var(--gray-200);border-radius:12px;outline:none;color:var(--text);transition:border-color .15s}
-.cb-form-input:focus{border-color:var(--blue)}
-.cb-form-input::placeholder{color:var(--gray-400)}
-.cb-form-select{width:100%;padding:12px 16px;font-size:14px;border:1.5px solid var(--gray-200);border-radius:12px;outline:none;color:var(--text);background:white;-webkit-appearance:none}
-.cb-form-select:focus{border-color:var(--blue)}
-.cb-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.cb-form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
-.cb-geo-preview{background:var(--gray-50);border:1.5px solid var(--gray-100);border-radius:12px;height:130px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
-.cb-geo-ring{border-radius:50%;border:1.5px solid rgba(0,82,255,.25);position:absolute;animation:geoP 3s ease-in-out infinite}
-.cb-geo-dot{width:10px;height:10px;border-radius:50%;background:var(--blue);box-shadow:0 0 12px rgba(0,82,255,.4);position:absolute;z-index:2}
-@keyframes geoP{0%{opacity:.7;transform:scale(.9)}50%{opacity:.2;transform:scale(1.1)}100%{opacity:.7;transform:scale(.9)}}
-.cb-geo-lbl{position:absolute;bottom:10px;left:12px;font-size:11px;color:var(--gray-400)}
-
-/* ── TABS (internal pages) ── */
-.cb-tabs{display:flex;border-bottom:1.5px solid var(--gray-100);margin-bottom:24px}
-.cb-tab{padding:10px 22px;font-size:14px;font-weight:500;color:var(--gray-500);border:none;background:transparent;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;cursor:pointer;transition:all .15s}
-.cb-tab:hover{color:var(--text)}
-.cb-tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:600}
-
-/* ── FLAGGED ── */
-.cb-flag-card{background:white;border:1.5px solid #FEF3C7;border-radius:14px;padding:18px;display:flex;gap:16px;align-items:flex-start;margin-bottom:14px;transition:box-shadow .15s}
-.cb-flag-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.06)}
-.cb-flag-icon{width:40px;height:40px;flex-shrink:0;border-radius:10px;background:#FEF3C7;color:#D97706;display:flex;align-items:center;justify-content:center;font-size:18px}
-.cb-flag-name{font-size:14px;font-weight:700;color:var(--text)}
-.cb-flag-reason{font-size:13px;color:#D97706;margin-top:2px}
-.cb-flag-meta{font-size:12px;color:var(--gray-500);margin-top:4px}
-.cb-flag-actions{display:flex;gap:8px;margin-top:12px}
-.cb-flag-approve{padding:7px 16px;font-size:13px;font-weight:600;background:rgba(5,177,105,.08);color:var(--green);border:1.5px solid rgba(5,177,105,.2);border-radius:100px;cursor:pointer}
-.cb-flag-approve:hover{background:rgba(5,177,105,.14)}
-.cb-flag-reject{padding:7px 16px;font-size:13px;font-weight:600;background:rgba(207,48,74,.08);color:var(--red);border:1.5px solid rgba(207,48,74,.2);border-radius:100px;cursor:pointer}
-.cb-flag-reject:hover{background:rgba(207,48,74,.14)}
-
-/* ── STUDENT SUBMIT ── */
-.cb-submit-page{min-height:100vh;background:radial-gradient(1000px 600px at 50% 18%,rgba(0,82,255,.06),#fff);display:flex;align-items:center;justify-content:center;padding:40px 18px}
-.cb-submit-card{background:white;border:1.5px solid var(--gray-100);border-radius:20px;width:100%;max-width:440px;padding:36px 32px;box-shadow:0 24px 60px rgba(0,0,0,.07)}
-.cb-submit-logo{text-align:center;margin-bottom:28px}
-.cb-submit-icon{width:52px;height:52px;background:var(--blue);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;color:white;margin-bottom:12px}
-.cb-submit-title{font-size:22px;font-weight:600;letter-spacing:-.5px}
-.cb-submit-sub{font-size:14px;color:var(--gray-500);margin-top:4px}
-.cb-submit-success{text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px 0}
-.cb-submit-success-icon{width:64px;height:64px;border-radius:50%;background:rgba(5,177,105,.1);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:26px;animation:spop .4s cubic-bezier(.34,1.56,.64,1)}
-@keyframes spop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
-.cb-receipt{background:var(--gray-50);border-radius:12px;padding:16px 18px;width:100%}
-.cb-receipt-row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px}
-.cb-receipt-row:last-child{margin-bottom:0}
-.cb-receipt-k{color:var(--gray-500)}
-.cb-receipt-v{font-weight:600}
-
-/* ── TOAST ── */
-.cb-toast-wrap{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px}
-.cb-toast{background:white;border:1.5px solid var(--gray-200);border-radius:12px;padding:13px 18px;font-size:14px;color:var(--text);display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.1);animation:tfade .25s ease}
-@keyframes tfade{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
-.cb-toast.success{border-left:4px solid var(--green)}
-.cb-toast.error{border-left:4px solid var(--red)}
-.cb-toast.warn{border-left:4px solid #D97706}
-
-@media(max-width:1100px){
-  .cb-hero,.cb-two-col,.cb-cta-section{padding:48px 32px;gap:40px}
-  .cb-sec-gray,.cb-footer{padding:48px 32px}
-  .cb-stats{grid-template-columns:repeat(2,1fr)}
+.cb-nav-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
 }
-/* Hamburger button — hidden on desktop */
-.cb-hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;flex-direction:column;gap:5px;z-index:10}
-.cb-hamburger span{display:block;width:22px;height:2px;background:var(--text);border-radius:2px;transition:all .2s}
-/* Mobile dropdown menu */
-.cb-mobile-menu{display:none;flex-direction:column;padding:12px 16px 16px;border-top:1px solid var(--gray-100);animation:slideDown .2s ease}
-@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
-.cb-mobile-link{display:block;width:100%;text-align:left;padding:12px 8px;font-size:15px;font-weight:500;color:var(--text);background:none;border:none;border-radius:10px;cursor:pointer;transition:background .12s}
-.cb-mobile-link:hover{background:var(--gray-50)}
-.cb-mobile-cta{color:var(--blue);font-weight:600}
-
-@media(max-width:768px){
-  /* ── Layout stacking ── */
-  .cb-hero,.cb-two-col,.cb-cta-section{grid-template-columns:1fr; padding: 24px 16px; gap: 20px;}
-  .cb-hero{min-height:auto !important;}
-  .cb-footer-grid{grid-template-columns:1fr 1fr; gap: 20px;}
-  .cb-articles{grid-template-columns:1fr; gap: 14px;}
-  .cb-stats{grid-template-columns:1fr 1fr; gap: 10px;}
-  .cb-sec-gray,.cb-footer{padding: 28px 16px;}
-
-  /* ── Navigation: hamburger ── */
-  .cb-desktop-only{display:none !important}
-  .cb-hamburger{display:flex}
-  .cb-mobile-menu{display:flex}
-  .cb-mega{display:none !important}
-  .cb-nav{padding:10px 16px; height:auto; flex-direction:column}
-  .cb-nav-inner{width:100%}
-
-  /* ── Hero declutter ── */
-  .cb-hero-title{font-size: 32px; letter-spacing: -1px; margin-bottom: 10px; line-height: 1.08;}
-  .cb-hero-sub{font-size: 14px; margin-bottom: 16px; max-width: 100%;}
-  .cb-phone-bg{display: none;} /* Hide the phone mockup entirely on mobile */
-  .cb-submit-card{padding: 20px 16px;}
-
-  /* ── Section headings ── */
-  .cb-h2, .cb-cta-h2{font-size: 24px; letter-spacing: -0.5px; line-height: 1.15;}
-  .cb-p{font-size: 14px; margin-bottom: 16px;}
-  .cb-badge-pill{font-size: 11px; padding: 4px 10px; margin-bottom: 12px;}
-
-  /* ── Hide heavy visual panels on mobile ── */
-  .cb-asset-table{border-radius: 20px; padding: 14px 14px 6px;}
-  .cb-asset-name{font-size: 18px;}
-  .cb-asset-price{font-size: 16px;}
-  .cb-asset-chg{font-size: 12px;}
-
-  /* ── QR & geofence panels: no forced square ── */
-  .cb-qr-dark{padding: 20px; border-radius: 20px;}
-  .cb-feat-wrap{aspect-ratio: auto; padding: 20px; border-radius: 20px;}
-  .cb-feat-phone{width: 80%;}
-
-  /* ── Forms ── */
-  .cb-hero-form, .cb-cta-form{flex-direction: column; width: 100%; gap: 10px;}
-  .cb-hero-form input, .cb-cta-form input{width: 100%; font-size: 14px; padding: 12px 16px;}
-  .cb-hero-form-btn, .cb-cta-btn{width: 100%; padding: 12px; font-size: 14px;}
-
-  /* ── Dashboard & Sub-components ── */
-  .cb-dash-page{flex-direction:column; padding:12px 8px; gap: 12px;}
-  .cb-dash-sidebar{width:100%; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--gray-100); padding-bottom: 16px;}
-  .cb-form-grid{grid-template-columns: 1fr; gap: 12px;}
-  .cb-tbl-wrap{overflow-x: auto; width: 100%; border-radius: 8px; -webkit-overflow-scrolling: touch;}
-  .cb-tbl-top{flex-direction: column; align-items: flex-start; gap: 10px;}
-  .cb-tbl th, .cb-tbl td{padding: 12px 10px; font-size: 13px;}
-  .cb-stat-card{padding: 16px;}
-  .cb-filter-pill{padding: 8px; font-size: 13px;}
-  .cb-modal{margin: 10px; width: calc(100% - 20px); max-height: 90vh; overflow-y: auto;}
-  .cb-dash-main{padding: 8px;}
-  
-  /* ── Dashboard Tabs ── */
-  .cb-dash-tabs{display: flex; overflow-x: auto; padding-bottom: 4px; border-bottom: none; -webkit-overflow-scrolling: touch; scrollbar-width: none;}
-  .cb-dash-tabs::-webkit-scrollbar { display: none; }
-  .cb-dash-tab{white-space: nowrap; padding: 10px 16px; border-radius: 20px; background: var(--gray-50); border: 1px solid var(--gray-100); color: var(--gray-600); border-bottom: none !important;}
-  .cb-dash-tab.active{background: var(--blue); color: white; border-color: var(--blue);}
-  
-  /* Make all top-level header buttons stack */
-  .cb-dash-main > div > div:first-child{flex-direction: column; align-items: flex-start !important; gap: 12px; margin-bottom: 20px !important;}
-  .cb-btn-signup, .cb-btn-dark, .cb-btn-signin{width: 100%; text-align: center; justify-content: center;}
-
-  /* ── Footer compact ── */
-  .cb-footer-bottom{flex-direction: column; align-items: flex-start; gap: 8px; padding-top: 16px; margin-top: 24px;}
-  .cb-footer-bottom-links{gap: 16px;}
-  .cb-footer-col h4{font-size: 13px; margin-bottom: 8px;}
-  .cb-footer-col a{font-size: 13px;}
-
-  /* ── CTA section padding ── */
-  .cb-circles{display: none;} /* Hide decorative circles on mobile */
+.cb-nav-btn {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--t2);
+  text-decoration: none;
+  transition: color 0.2s;
 }
-@media(max-width:480px){
-  .cb-hero-title{font-size: 28px; letter-spacing: -0.8px;}
-  .cb-h2, .cb-cta-h2{font-size: 22px;}
-  .cb-stats{grid-template-columns:1fr;}
-  .cb-qr-canvas{width: 120px; height: 120px;}
-  .cb-footer-grid{grid-template-columns:1fr;}
-  .cb-asset-table{display:none;} /* Hide entirely on very small screens */
+.cb-nav-btn:hover { color: var(--blue); }
+.cb-nav-btn.active { color: var(--blue); border-bottom: 2px solid var(--blue); padding-bottom: 21px; }
+
+/* CDS Buttons */
+.cb-btn {
+  padding: 10px 18px;
+  border-radius: 99px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
 }
-.cb-full-qr-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(5,15,25,0.98);z-index:4000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;animation:cbFadeIn .2s ease;cursor:zoom-out}
-@keyframes cbFadeIn{from{opacity:0}to{opacity:1}}
-.cb-full-qr-content{background:white;padding:32px;border-radius:32px;box-shadow:0 40px 100px rgba(0,0,0,0.5);display:flex;flex-direction:column;align-items:center;animation:cbScaleIn .3s cubic-bezier(0.34, 1.56, 0.64, 1)}
-@keyframes cbScaleIn{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}
-.cb-full-qr-close{position:absolute;top:32px;right:32px;width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.15);border:none;color:white;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s}
-.cb-full-qr-close:hover{background:rgba(255,255,255,0.25)}
+.cb-btn-pri { background: var(--blue); color: #fff; }
+.cb-btn-pri:hover { background: var(--blue-h); }
+.cb-btn-sec { background: var(--gray-100); color: var(--t1); }
+.cb-btn-sec:hover { background: #E8EDF0; }
+
+/* Dashboard Layout */
+.app-container { min-height: 100vh; display: flex; flex-direction: column; }
+.main-wrapper {
+  display: grid;
+  grid-template-columns: 280px 1fr 300px;
+  gap: 32px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  width: 100%;
+}
+
+/* Card System */
+.stat-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+.stat-lbl { font-size: 12px; color: var(--t2); text-transform: uppercase; font-weight: 600; margin-bottom: 8px; }
+.stat-val { font-size: 32px; font-weight: 700; color: var(--t1); }
+
+/* Table System */
+.cb-tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+.cb-tbl { width: 100%; border-collapse: collapse; background: #fff; }
+.cb-tbl th { text-align: left; padding: 12px 16px; font-size: 12px; color: var(--t3); border-bottom: 1px solid var(--border); }
+.cb-tbl td { padding: 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+.cb-tbl tr:hover { background: var(--gray-50); }
+
+/* Icons & Helpers */
+.cb-icon-btn { color: var(--t2); padding: 8px; border-radius: 50%; transition: background 0.2s; }
+.cb-icon-btn:hover { background: var(--gray-100); }
+
+@media (max-width: 1024px) {
+  .main-wrapper { grid-template-columns: 1fr; }
+  .left-col, .right-col { display: none; }
+}
+
+/* Modal */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: #fff; border-radius: 16px; width: 480px; padding: 32px; box-shadow: 0 24px 48px rgba(0,0,0,0.1); }
 `;
 
 /* ────────── DATA (live from API) ────────── */
@@ -538,9 +217,6 @@ const FOOTER_COLS = {
     Students: ["How to check in", "QR troubleshooting", "Privacy policy", "Contact support"],
     Company: ["About", "Blog", "Careers", "Security", "Status", "Changelog"],
 };
-const fmt = n => n < 10 ? "0" + n : "" + n;
-const pct = (a, b) => b ? Math.round((a / b) * 100) : 0;
-
 /* ────────── TOAST ────────── */
 function useToast() {
     const [ts, setTs] = useState([]);
@@ -554,10 +230,10 @@ function useToast() {
 function Toasts({ ts }) {
     const ic = { success: <CheckCircle2 size={14} />, error: <XCircle size={14} />, warn: <AlertTriangle size={14} /> };
     return (
-        <div className="cb-toast-wrap">
+        <div className="toast-wrap">
             {ts.map(t => (
-                <div key={t.id} className={`cb-toast ${t.type}`}>
-                    <span style={{ color: t.type === "success" ? "var(--green)" : t.type === "error" ? "var(--red)" : "#D97706" }}>{ic[t.type]}</span>
+                <div key={t.id} className={`toast ${t.type} `}>
+                    <span style={{ color: t.type === "success" ? "var(--green)" : t.type === "error" ? "var(--red)" : "var(--amber)" }}>{ic[t.type]}</span>
                     {t.msg}
                 </div>
             ))}
@@ -570,18 +246,18 @@ function QRPattern({ seed }) {
     let s = (seed || 1) * 9301 + 49297;
     const rng = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
     const fnd = new Set();
-    [[0, 0], [0, 1], [1, 0], [0, 2], [1, 2], [2, 0], [2, 1], [2, 2], [9, 0], [10, 0], [11, 0], [9, 1], [11, 1], [9, 2], [10, 2], [11, 2], [0, 9], [1, 9], [2, 9], [0, 10], [2, 10], [0, 11], [1, 11], [2, 11]].forEach(([r, c]) => fnd.add(`${r},${c}`));
+    [[0, 0], [0, 1], [1, 0], [0, 2], [1, 2], [2, 0], [2, 1], [2, 2], [9, 0], [10, 0], [11, 0], [9, 1], [11, 1], [9, 2], [10, 2], [11, 2], [0, 9], [1, 9], [2, 9], [0, 10], [2, 10], [0, 11], [1, 11], [2, 11]].forEach(([r, c]) => fnd.add(`${r},${c} `));
     const cells = [];
     for (let r = 0; r < 12; r++) for (let c = 0; c < 12; c++) {
-        const filled = fnd.has(`${r},${c}`)
+        const filled = fnd.has(`${r},${c} `)
             ? (r % 12 <= 2 || (r % 12 >= 9 && r % 12 <= 11)) && (c % 12 <= 2 || (c % 12 >= 9 && c % 12 <= 11))
             : rng() > 0.45;
         cells.push({ r, c, filled });
     }
     return (
-        <div className="cb-qr-grid">
+        <div className="qr-grid-sm" style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '2px', width: '120px', height: '120px' }}>
             {cells.map(({ r, c, filled }) => (
-                <div key={`${r}-${c}`} className="cb-qr-cell" style={{ background: filled ? "#050F19" : "transparent" }} />
+                <div key={`${r} -${c} `} className="qr-cell" style={{ background: filled ? "var(--t1)" : "transparent", borderRadius: '1.5px' }} />
             ))}
         </div>
     );
@@ -637,37 +313,35 @@ function Nav({ toast }) {
             <div className="cb-nav-inner">
                 <Link to="/" className="cb-logo">
                     <img src="/logo.png" style={{ height: 38, width: 38, objectFit: "contain" }} />
+                    <span style={{ fontWeight: 800, color: "var(--blue)" }}>Acadience</span>
                 </Link>
-                {/* Desktop links - hidden on mobile via CSS */}
-                <ul className="cb-nav-links cb-desktop-only">
+                <ul className="cb-nav-links cb-desktop-only" style={{ listStyle: "none", display: "flex", gap: 32 }}>
                     {Object.keys(NAV_MENUS).map(name => (
                         <li key={name} className="cb-nav-item">
-                            <button className={`cb-nav-btn${open === name ? " open" : ""}`}
+                            <button className={`cb-nav-btn${open === name ? " active" : ""}`}
                                 onMouseEnter={() => setOpen(name)} onClick={() => setOpen(p => p === name ? null : name)}>
-                                {name} <span style={{ fontSize: 11, opacity: .6 }}>▾</span>
+                                {name} <ChevronDown size={14} style={{ opacity: .6, marginLeft: 4 }} />
                             </button>
                             {open === name && <MegaMenu data={NAV_MENUS[name]} onClose={() => setOpen(null)} />}
                         </li>
                     ))}
                     <li><button className="cb-nav-btn" onClick={() => toast.add("Pricing coming soon", "warn")}>Pricing</button></li>
                 </ul>
-                <div className="cb-nav-actions">
-                    <button className="cb-btn-signin cb-desktop-only" onClick={() => navigate("/login")}>Sign in</button>
-                    <button className="cb-btn-signup cb-desktop-only" onClick={() => navigate("/student")}>Student check-in</button>
-                    {/* Hamburger - visible on mobile only */}
+                <div className="cb-nav-actions" style={{ display: "flex", gap: 12 }}>
+                    <button className="cb-btn cb-btn-sec cb-desktop-only" onClick={() => navigate("/login")}>Sign in</button>
+                    <button className="cb-btn cb-btn-pri cb-desktop-only" onClick={() => navigate("/student")}>Student check-in</button>
                     <button className="cb-hamburger" onClick={() => setMobileOpen(p => !p)} aria-label="Menu">
                         {mobileOpen ? <X size={22} /> : <><span /><span /><span /></>}
                     </button>
                 </div>
             </div>
-            {/* Mobile dropdown */}
             {mobileOpen && (
                 <div className="cb-mobile-menu">
                     {Object.keys(NAV_MENUS).map(name => (
-                        <button key={name} className="cb-mobile-link" onClick={() => { setMobileOpen(false); toast.add(`${name} section`, "success"); }}>{name}</button>
+                        <button key={name} className="cb-mobile-link" onClick={() => { setMobileOpen(false); navigate("/docs"); }}>{name}</button>
                     ))}
                     <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); toast.add("Pricing coming soon", "warn"); }}>Pricing</button>
-                    <hr style={{ border: "none", borderTop: "1px solid var(--gray-100)", margin: "8px 0" }} />
+                    <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "8px 0" }} />
                     <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); navigate("/login"); }}>Sign in</button>
                     <button className="cb-mobile-link cb-mobile-cta" onClick={() => { setMobileOpen(false); navigate("/student"); }}>Student check-in</button>
                 </div>
@@ -696,28 +370,29 @@ function DashNav({ onLogout }) {
     ];
 
     return (
-        <nav className="cb-nav" ref={ref} style={{ borderBottom: "1px solid var(--gray-100)" }}>
+        <nav className="cb-nav" ref={ref}>
             <div className="cb-nav-inner">
                 <Link to="/" className="cb-logo">
-                    <img src="/logo.png" style={{ height: 38, width: 38, objectFit: "contain" }} />
+                    <img src="/logo.png" style={{ height: 32, width: 32, objectFit: "contain" }} />
+                    <span style={{ fontWeight: 800, color: "var(--blue)" }}>Acadience</span>
                 </Link>
-                <ul className="cb-nav-links cb-desktop-only">
+                <ul className="cb-nav-links cb-desktop-only" style={{ listStyle: "none", display: "flex", gap: 32 }}>
                     {navItems.map(it => (
                         <li key={it.label}>
                             <NavLink
                                 to={it.to}
                                 end={it.to === "/dashboard"}
-                                className={({ isActive }) => `cb-nav-btn${isActive ? " open" : ""}`}
+                                className={({ isActive }) => `cb-nav-btn${isActive ? " active" : ""}`}
                             >
                                 {it.label}
                             </NavLink>
                         </li>
                     ))}
                 </ul>
-                <div className="cb-nav-actions">
+                <div className="cb-nav-actions" style={{ display: "flex", gap: 12 }}>
                     <button className="cb-icon-btn"><Bell size={18} /></button>
                     <button className="cb-icon-btn"><Settings size={18} /></button>
-                    {onLogout && <button className="cb-icon-btn" onClick={onLogout} title="Sign out"><LogOut size={18} /></button>}
+                    <button className="cb-icon-btn" onClick={() => { localStorage.removeItem("token"); navigate("/login"); }} title="Sign out"><LogOut size={18} /></button>
                     <button className="cb-hamburger" onClick={() => setMobileOpen(p => !p)} aria-label="Menu">
                         {mobileOpen ? <X size={22} /> : <><span /><span /><span /></>}
                     </button>
@@ -725,9 +400,6 @@ function DashNav({ onLogout }) {
             </div>
             {mobileOpen && (
                 <div className="cb-mobile-menu">
-                    <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--gray-100)", marginBottom: 8 }}>
-                        <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--gray-400)", textTransform: "uppercase", letterSpacing: "1px" }}>Navigate</h4>
-                    </div>
                     {navItems.map(it => (
                         <NavLink
                             key={it.label}
@@ -739,9 +411,8 @@ function DashNav({ onLogout }) {
                             {it.label}
                         </NavLink>
                     ))}
-                    <hr style={{ border: "none", borderTop: "1px solid var(--gray-100)", margin: "8px 0" }} />
-                    <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); onLogout?.(); }}>Sign out</button>
-                    <button className="cb-mobile-link" onClick={() => { setMobileOpen(false); navigate("/"); }}>Back to Website</button>
+                    <hr style={{ border: "none", borderTop: "1px solid var(--border)", margin: "8px 0" }} />
+                    <button className="cb-mobile-link" onClick={() => { localStorage.removeItem("token"); navigate("/login"); }}>Sign out</button>
                 </div>
             )}
         </nav>
@@ -750,7 +421,7 @@ function DashNav({ onLogout }) {
 
 /* ────────── QR PANEL (dark) ────────── */
 function QRPanel({ session, onRefresh }) {
-    const [secs, setSecs] = useState(47);
+    const [secs, setSecs] = useState(30);
     const [seed, setSeed] = useState(() => Math.floor(Math.random() * 9999) + 1);
     useEffect(() => {
         const t = setInterval(() => setSecs(s => {
@@ -760,23 +431,18 @@ function QRPanel({ session, onRefresh }) {
         return () => clearInterval(t);
     }, []);
     const refresh = () => { setSeed(Math.floor(Math.random() * 9999) + 1); setSecs(30); onRefresh?.(); };
-    const tc = secs <= 5 ? "danger" : secs <= 10 ? "warn" : "ok";
-    const qrVal = session?.qr_token ? `${window.location.origin}/student?token=${session.qr_token}` : `https://acadience.app/student?token=${seed}`;
+    const tc = secs <= 5 ? "red" : secs <= 10 ? "orange" : "var(--blue)";
+    const qrVal = session?.qr_token ? `${window.location.origin}/#/student?token=${session.qr_token}` : `${window.location.origin}/#/student?token=DEMO_${seed}`;
     return (
-        <div className="cb-qr-dark">
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)", letterSpacing: ".1em", textTransform: "uppercase", alignSelf: "flex-start" }}>Live Session QR</div>
-            <div className="cb-qr-canvas" style={{ padding: 12, background: "white", borderRadius: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+            <div style={{ fontSize: 11, color: "var(--t3)", letterSpacing: ".1em", textTransform: "uppercase" }}>Live Session QR</div>
+            <div style={{ padding: 16, background: "white", borderRadius: 12, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
                 <QRCodeSVG value={qrVal} size={150} level="M" />
             </div>
-            <div style={{ textAlign: "center", marginTop: 4 }}>
-                <div className="cb-qr-label" style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,.5)" }}>ROTATES IN</div>
-                <div className={`cb-qr-timer ${tc}`} style={{ fontSize: 24, fontWeight: 800, marginTop: 4 }}>00:{secs.toString().padStart(2, '0')}</div>
+            <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--t3)" }}>ROTATES IN</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: tc, marginTop: 4 }}>00:{secs.toString().padStart(2, '0')}</div>
             </div>
-            <div className="cb-qr-bar" style={{ width: "100%", height: 4, background: "rgba(255,255,255,.1)", borderRadius: 4, marginTop: 12, overflow: "hidden" }}>
-                <div className="cb-qr-bar-fill" style={{ height: "100%", width: `${(secs / 30) * 100}%`, transition: "width 1s linear", background: secs <= 5 ? "#F87171" : secs <= 10 ? "#FBBF24" : "var(--blue)" }} />
-            </div>
-            <div className="cb-qr-course" style={{ fontSize: 13, fontWeight: 600, color: "#aaa" }}>{session?.courseName || "CS401"} · Session #{session?.id || 1}</div>
-            <button className="cb-qr-refresh" onClick={refresh} style={{ marginTop: 0, background: "rgba(255,255,255,.1)", border: "none", color: "white", padding: "8px 16px", borderRadius: 100, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><RotateCcw size={13} /> Refresh QR</button>
         </div>
     );
 }
@@ -811,7 +477,7 @@ function PhoneMockup({ tab, setTab }) {
                 </div>
                 <div className="cb-phone-tabs">
                     {["1H", "1D", "1W", "Term"].map(t => (
-                        <button key={t} className={`cb-phone-tab${tab === t ? " active" : ""}`} onClick={() => setTab(t)}>{t}</button>
+                        <button key={t} className={`cb - phone - tab${tab === t ? " active" : ""} `} onClick={() => setTab(t)}>{t}</button>
                     ))}
                 </div>
                 {rows.map(r => (
@@ -820,7 +486,7 @@ function PhoneMockup({ tab, setTab }) {
                             <div className="cb-phone-row-icon" style={{ background: r.ibg }}>{r.icon}</div>
                             <span className="cb-phone-row-name">{r.name}</span>
                         </div>
-                        <span className={`cb-phone-row-val${r.up ? " up" : ""}`}>{r.up && <TrendingUp size={9} />} {r.val}</span>
+                        <span className={`cb - phone - row - val${r.up ? " up" : ""} `}>{r.up && <TrendingUp size={9} />} {r.val}</span>
                     </div>
                 ))}
             </div>
@@ -839,7 +505,7 @@ function SessionsAssetTable({ sessions = [] }) {
         <div className="cb-asset-table">
             <div className="cb-asset-tabs">
                 {tabs.map(t => (
-                    <button key={t} className={`cb-asset-tab${activeTab === t ? " active" : ""}`} onClick={() => setActiveTab(t)}>{t}</button>
+                    <button key={t} className={`cb - asset - tab${activeTab === t ? " active" : ""} `} onClick={() => setActiveTab(t)}>{t}</button>
                 ))}
             </div>
             {rows.map(s => (
@@ -853,7 +519,7 @@ function SessionsAssetTable({ sessions = [] }) {
                     </div>
                     <div style={{ textAlign: "right" }}>
                         <div className="cb-asset-price">{pct(s.attended, s.total)}%</div>
-                        <div className={`cb-asset-chg ${s.attended / s.total >= .8 ? "up" : "dn"}`}>
+                        <div className={`cb - asset - chg ${s.attended / s.total >= .8 ? "up" : "dn"} `}>
                             {s.attended / s.total >= .8 ? <TrendingUp size={12} /> : <TrendingDown size={12} />} {s.attended}/{s.total} present
                         </div>
                     </div>
@@ -889,7 +555,7 @@ function FeaturePhone() {
                 </div>
                 {/* geo preview */}
                 <div style={{ background: "#F0F4FF", borderRadius: 10, height: 60, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", marginTop: 4 }}>
-                    {[70, 46, 24].map((d, i) => <div key={d} style={{ position: "absolute", width: d, height: d, borderRadius: "50%", border: "1.5px solid rgba(0,82,255,.25)", animation: `geoP 3s ease-in-out ${i * .5}s infinite` }} />)}
+                    {[70, 46, 24].map((d, i) => <div key={d} style={{ position: "absolute", width: d, height: d, borderRadius: "50%", border: "1.5px solid rgba(0,82,255,.25)", animation: `geoP 3s ease -in -out ${i * .5}s infinite` }} />)}
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--blue)", position: "relative", zIndex: 2, boxShadow: "0 0 8px rgba(0,82,255,.5)" }} />
                     <div style={{ position: "absolute", bottom: 5, left: 8, fontSize: 9, color: "#888" }}>100 m radius · GPS <Check size={13} /></div>
                 </div>
@@ -986,11 +652,11 @@ function HomePage({ toast }) {
                     <div style={{ background: "white", borderRadius: 28, display: "flex", alignItems: "center", justifyContent: "center", aspectRatio: "1", boxShadow: "0 2px 20px rgba(0,0,0,.06)" }}>
                         <div style={{ position: "relative", width: 260, height: 260, display: "flex", alignItems: "center", justifyContent: "center" }}>
                             {[240, 160, 90].map((d, i) => (
-                                <div key={d} style={{ position: "absolute", width: d, height: d, borderRadius: "50%", background: `rgba(0,82,255,${.04 + i * .02})`, border: "1.5px solid rgba(0,82,255,.18)" }} />
+                                <div key={d} style={{ position: "absolute", width: d, height: d, borderRadius: "50%", background: `rgba(0, 82, 255, ${.04 + i * .02})`, border: "1.5px solid rgba(0,82,255,.18)" }} />
                             ))}
                             <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(0,82,255,.12)", border: "2px solid var(--blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, zIndex: 2 }}><MapPin size={18} color="var(--blue)" /></div>
                             {[["-16px", "50%", true], ["20%", "calc(100% - 20px)", true], ["calc(100% - 16px)", "28%", true], ["10%", "12%", false]].map(([t, l, ok], i) => (
-                                <div key={i} style={{ position: "absolute", top: t, left: l, width: 30, height: 30, borderRadius: "50%", background: ok ? "rgba(5,177,105,.12)" : "rgba(207,48,74,.1)", border: `2px solid ${ok ? "var(--green)" : "var(--red)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
+                                <div key={i} style={{ position: "absolute", top: t, left: l, width: 30, height: 30, borderRadius: "50%", background: ok ? "rgba(5,177,105,.12)" : "rgba(207,48,74,.1)", border: `2px solid ${ok ? "var(--green)" : "var(--red)"} `, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>
                                     {ok ? <Check size={12} /> : <X size={12} />}
                                 </div>
                             ))}
@@ -1090,7 +756,7 @@ function StatsRow({ sessions = [], courses = [], flags = [] }) {
     const stats = [
         { lbl: "Active Sessions", val: String(activeSessions), sub: `${activeSessions} live now`, dir: "up", color: "#0052FF", bar: Math.min(100, activeSessions * 33) },
         { lbl: "Total Courses", val: String(courses.length), sub: `${courses.length} courses`, dir: "neu", color: "#6366F1", bar: 100 },
-        { lbl: "Avg Attendance", val: `${avgRate}%`, sub: "this term", dir: "up", color: "var(--green)", bar: avgRate },
+        { lbl: "Avg Attendance", val: `${avgRate}% `, sub: "this term", dir: "up", color: "var(--green)", bar: avgRate },
         { lbl: "Flagged", val: String(flags.filter(f => f.status === "pending").length), sub: "Need review", dir: "dn", color: "#D97706", bar: 15 },
     ];
     return (
@@ -1099,8 +765,8 @@ function StatsRow({ sessions = [], courses = [], flags = [] }) {
                 <div key={s.lbl} className="cb-stat-card">
                     <div className="cb-stat-lbl">{s.lbl}</div>
                     <div className="cb-stat-val" style={{ color: s.color }}>{s.val}</div>
-                    <div className={`cb-stat-sub ${s.dir}`}>{s.sub}</div>
-                    <div className="cb-stat-bar"><div className="cb-stat-bar-fill" style={{ width: `${s.bar}%`, background: s.color }} /></div>
+                    <div className={`cb - stat - sub ${s.dir} `}>{s.sub}</div>
+                    <div className="cb-stat-bar"><div className="cb-stat-bar-fill" style={{ width: `${s.bar}% `, background: s.color }} /></div>
                 </div>
             ))}
         </div>
@@ -1121,7 +787,7 @@ function SessionsTable({ onView, onNew, toast, sessions = [], courses = [] }) {
                 <div className="cb-tbl-title">Sessions</div>
                 <div className="cb-tbl-filters">
                     {["all", "active", "closed"].map(f => (
-                        <button key={f} className={`cb-filter-pill${filter === f ? " active" : ""}`} onClick={() => setFilter(f)}>
+                        <button key={f} className={`cb - filter - pill${filter === f ? " active" : ""} `} onClick={() => setFilter(f)}>
                             {f === "all" ? "All" : f === "active" ? "Live" : "Closed"}
                         </button>
                     ))}
@@ -1146,7 +812,7 @@ function SessionsTable({ onView, onNew, toast, sessions = [], courses = [] }) {
                                 <td>{s.date || (s.start_time ? s.start_time.split('T')[0] : "—")}</td>
                                 <td style={{ fontVariantNumeric: "tabular-nums" }}>{s.time || (s.start_time ? s.start_time.split('T')[1]?.substring(0, 5) : "—")}</td>
                                 <td className="c">
-                                    <span className={`cb-bdg ${s.status === "active" ? "green" : "gray"}`}>
+                                    <span className={`cb - bdg ${s.status === "active" ? "green" : "gray"} `}>
                                         {s.status === "active" && <span className="cb-bdg-dot" />}
                                         {s.status === "active" ? "LIVE" : "CLOSED"}
                                     </span>
@@ -1172,14 +838,14 @@ function FlaggedView({ toast }) {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     useEffect(() => {
-        axios.get(`${API_BASE}/api/lecturer/flags`, { headers: getAuthHeaders() })
+        axios.get(`${API_BASE} /api/lecturer / flags`, { headers: getAuthHeaders() })
             .then(r => setItems(Array.isArray(r.data) ? r.data : []))
             .catch(() => setItems([]))
             .finally(() => setLoading(false));
     }, []);
     const handle = async (id, action) => {
         try {
-            await axios.post(`${API_BASE}/api/lecturer/flags/${id}/${action}`, {}, { headers: getAuthHeaders() });
+            await axios.post(`${API_BASE} /api/lecturer / flags / ${id}/${action}`, {}, { headers: getAuthHeaders() });
             setItems(it => it.map(i => (i.attendance_id === id) ? { ...i, status: action === "approve" ? "approved" : "rejected" } : i));
             toast.add(action === "approve" ? "Submission approved" : "Submission rejected", action === "approve" ? "success" : "error");
         } catch (e) { toast.add("Action failed", "error"); }
@@ -1415,9 +1081,9 @@ function SessionDetail({ toast, onShowQR }) {
                 axios.get(`${API_BASE}/api/lecturer/sessions/${id}/attendance`, h),
                 axios.get(`${API_BASE}/api/lecturer/sessions/${id}/flags`, h),
             ]);
-            setSession(sessionRes.data.session);
-            setAttendance(attendanceRes.data.attendance);
-            setFlags(flagsRes.data.flags);
+            setSession(sessionRes.data?.session || sessionRes.data);
+            setAttendance(attendanceRes.data?.attendance || (Array.isArray(attendanceRes.data) ? attendanceRes.data : []));
+            setFlags(flagsRes.data?.flags || (Array.isArray(flagsRes.data) ? flagsRes.data : []));
         } catch (e) { toast.add("Failed to load session", "error"); navigate("/dashboard/sessions"); }
         finally { setLoading(false); }
     }, [id, navigate, toast]);
@@ -1528,10 +1194,52 @@ function AttendanceTable({ rows, session }) {
     );
 }
 
+/* ────────── SESSIONS VIEW ────────── */
+function SessionsView({ toast, sessions, onOpen }) {
+    return (
+        <div style={{ padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 700 }}>Attendance Sessions</h2>
+            </div>
+            <div className="cb-tbl-wrap">
+                <table className="cb-tbl">
+                    <thead>
+                        <tr>
+                            <th>Course</th>
+                            <th>Session</th>
+                            <th>Attendance</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {sessions.map(s => (
+                            <tr key={s.session_id || s.id} style={{ cursor: "pointer" }} onClick={() => onOpen(s.session_id || s.id)}>
+                                <td style={{ fontWeight: 600 }}>{s.course_code}</td>
+                                <td>Session #{s.session_number || s.session_id}</td>
+                                <td>{s.student_count || 0} students</td>
+                                <td>{new Date(s.start_time).toLocaleDateString()}</td>
+                                <td>
+                                    <span className={`cb-bdg ${s.status === "active" ? "green" : "gray"}`}>
+                                        {s.status === "active" ? "LIVE" : "CLOSED"}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button className="cb-btn cb-btn-sec" style={{ padding: "6px 12px", fontSize: 12 }}>View</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
 function Dashboard({ toast }) {
     const navigate = useNavigate();
     const [showModal, setShowModal] = useState(false);
-    const [showCourseModal, setShowCourseModal] = useState(false);
     const [user, setUser] = useState(() => localStorage.getItem("token") ? { token: localStorage.getItem("token") } : null);
     const [courses, setCourses] = useState([]);
     const [sessions, setSessions] = useState([]);
@@ -1555,68 +1263,118 @@ function Dashboard({ toast }) {
             setFlags(f.data?.flags || (Array.isArray(f.data) ? f.data : []));
             const active = (s.data?.sessions || []).find(x => x.status === "active");
             if (active) {
-                axios.get(`${API_BASE}/api/lecturer/sessions/${active.session_id || active.id}/attendance`, { headers: getAuthHeaders() })
-                    .then(r => {
-                        const data = r.data?.attendance || (Array.isArray(r.data) ? r.data : []);
-                        setStudents(data.filter(a => a.status !== 'absent'));
-                    })
+                axios.get(`${API_BASE}/api/lecturer/sessions/${active.session_id || active.id}/attendance`, h)
+                    .then(r => setStudents(r.data?.attendance || []))
                     .catch(() => { });
-            } else {
-                setStudents([]);
             }
         } catch (e) { toast.add("Failed to load data", "error"); }
         finally { setLoading(false); }
     }, [user, toast]);
 
-    useEffect(() => {
-        fetchAll();
-        const timer = setInterval(() => {
-            const active = sessions.find(x => x.status === "active");
-            if (active) {
-                axios.post(`${API_BASE}/api/lecturer/sessions/${active.session_id || active.id}/refresh-qr`, {}, { headers: getAuthHeaders() })
-                    .then(r => {
-                        setSessions(prev => prev.map(s => (s.session_id === active.session_id || s.id === active.id) ? { ...s, qr_token: r.data.qr_token, qr_expiry: r.data.qr_expires_at } : s));
-                    }).catch(() => { });
-            }
-        }, 30000);
-        return () => clearInterval(timer);
-    }, [fetchAll, sessions.length]);
+    useEffect(() => { fetchAll(); }, [fetchAll]);
 
     if (!user) return <Navigate to="/login" />;
 
+    const activeSession = sessions.find(s => s.status === 'active');
+
     return (
-        <div style={{ background: "var(--gray-50)", minHeight: "100vh" }}>
+        <div className="app-container">
             <DashNav onLogout={() => { localStorage.removeItem("token"); setUser(null); navigate("/login"); }} />
-            <div className="cb-dash-page" style={{ padding: "32px 20px" }}>
-                <div className="cb-dash-main" style={{ maxWidth: 1200, margin: "0 auto", width: "100%" }}>
-                    <Routes>
-                        <Route path="/" element={
-                            <>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
-                                    <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-1.2px" }}>Dashboard</h2>
-                                    <button className="cb-btn-signup" onClick={() => setShowModal(true)}>+ New Session</button>
-                                </div>
-                                <StatsRow sessions={sessions} courses={courses} flags={flags} />
-                                <SessionsTable onView={s => navigate(`/dashboard/sessions/${s.session_id}`)} sessions={sessions} toast={toast} />
-                            </>
-                        } />
-                        <Route path="sessions" element={
-                            <>
-                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
-                                    <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-1.2px", color: "var(--text)" }}>Sessions</h2>
-                                    <button className="cb-btn-signup" onClick={() => setShowModal(true)}>+ New Session</button>
-                                </div>
-                                <SessionsTable onView={s => navigate(`/dashboard/sessions/${s.session_id}`)} sessions={sessions} toast={toast} />
-                            </>
-                        } />
-                        <Route path="sessions/:id" element={<SessionDetail toast={toast} onShowQR={setFullQR} />} />
-                        <Route path="courses" element={<CoursesView toast={toast} courses={courses} onAdd={() => setShowCourseModal(true)} />} />
-                        <Route path="flags" element={<FlaggedView toast={toast} items={flags} onUpdate={fetchAll} />} />
-                    </Routes>
+
+            <div className="loc-bar">
+                <div className="loc-tabs">
+                    <button className="loc-tab active" onClick={() => navigate("/dashboard")}>Overview</button>
+                    <button className="loc-tab dim">Reports</button>
+                    <button className="loc-tab dim">Settings</button>
+                </div>
+                <div className="loc-actions">
+                    <button className="loc-btn" onClick={() => setShowModal(true)}>+ New Session</button>
                 </div>
             </div>
+
+            <div className="main-wrapper">
+                {/* LEFT COL */}
+                <div className="left-col">
+                    <div className="stat-card blue">
+                        <div className="stat-lbl w">Total Students</div>
+                        <div className="stat-val w">{students.length}</div>
+                        <div className="stat-unit w">Attending currently</div>
+                        <div className="bar-track w"><div className="bar-fill w" style={{ width: '65%' }} /></div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="stat-lbl">Active Courses</div>
+                        <div className="stat-val">{courses.length}</div>
+                        <div className="stat-unit">Total assigned</div>
+                    </div>
+                    <div className="stat-card">
+                        <div className="insight-text">"High attendance observed in CS101 this week."</div>
+                        <div className="insight-foot">
+                            <span>AI Insight</span>
+                            <TrendingUp size={14} color="var(--green)" />
+                        </div>
+                    </div>
+                    <button className="new-sess-btn" onClick={() => setShowModal(true)}>+ New Session</button>
+                </div>
+
+                {/* CENTER COL */}
+                <div className="center-col">
+                    <div className="scene-wrap">
+                        {/* Classroom visualization would go here */}
+                        <div style={{ textAlign: 'center', opacity: 0.5 }}>
+                            <Users size={80} strokeWidth={1} color="var(--blue)" />
+                            <p style={{ marginTop: 12, fontSize: 14 }}>Real-time Visualization</p>
+                        </div>
+                    </div>
+                    {activeSession && (
+                        <div className="live-badge">
+                            <div className="live-dot" /> LIVE: {activeSession.course_name}
+                        </div>
+                    )}
+                </div>
+
+                {/* RIGHT COL */}
+                <div className="right-col">
+                    <div className="metric-card">
+                        <div className="metric-top">
+                            <div className="metric-name">Flags <span className="t-dn">+{flags.length}</span></div>
+                        </div>
+                        <div className="metric-val">{flags.length}</div>
+                        <div className="metric-unit">Critical alerts</div>
+                    </div>
+                    <div className="metric-card">
+                        <div className="metric-top">
+                            <div className="metric-name">Sessions</div>
+                        </div>
+                        <div className="metric-val md">{sessions.length}</div>
+                        <div className="metric-unit">Total this month</div>
+                    </div>
+                    <div className="metric-card" style={{ background: 'var(--blue-light)' }}>
+                        <div className="metric-name" style={{ color: 'var(--blue)' }}>Quick Actions</div>
+                        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <button className="loc-btn" style={{ width: '100%' }} onClick={() => navigate("/dashboard/courses")}>View Courses</button>
+                            <button className="loc-btn" style={{ width: '100%' }} onClick={() => navigate("/dashboard/flags")}>In Review</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bottom-panel">
+                <div className="bottom-title">Attendance History</div>
+                <div className="dot-chart">
+                    {Array.from({ length: 168 }).map((_, i) => (
+                        <div key={i} className="dot" style={{ background: i % 10 === 0 ? 'var(--blue)' : 'var(--border2)', opacity: 0.3 + (Math.random() * 0.7) }} />
+                    ))}
+                </div>
+            </div>
+
             {showModal && <NewSessionModal onClose={() => setShowModal(false)} onSave={() => { setShowModal(false); fetchAll(); }} toast={toast} courses={courses} />}
-            {showCourseModal && <NewCourseModal onClose={() => setShowCourseModal(false)} onSave={() => { setShowCourseModal(false); fetchAll(); }} toast={toast} />}
+            <Routes>
+                <Route path="/" element={<div style={{ padding: 24 }}><h2 style={{ fontSize: 24, fontWeight: 700 }}>Overview</h2><p style={{ color: "var(--t3)", marginTop: 8 }}>Welcome to your attendance dashboard.</p></div>} />
+                <Route path="sessions" element={<SessionsView sessions={sessions} onOpen={(id) => navigate(`sessions/${id}`)} toast={toast} />} />
+                <Route path="sessions/:id" element={<div className="sess-overlay"><SessionDetail toast={toast} onShowQR={setFullQR} /></div>} />
+                <Route path="courses" element={<div className="sess-overlay"><CoursesView toast={toast} courses={courses} onAdd={() => navigate("/dashboard")} /></div>} />
+                <Route path="flags" element={<div className="sess-overlay"><FlaggedView toast={toast} items={flags} onUpdate={fetchAll} /></div>} />
+            </Routes>
             {fullQR && <FullscreenQR val={fullQR.val} title={fullQR.title} onClose={() => setFullQR(null)} />}
         </div>
     );
